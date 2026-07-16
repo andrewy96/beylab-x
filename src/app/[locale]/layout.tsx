@@ -1,0 +1,51 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
+import { getDict, isLocale, locales, Locale } from "@/i18n";
+
+export function generateStaticParams() {
+  return locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isLocale(locale)) return {};
+  const dict = getDict(locale);
+  return {
+    title: {
+      default: `${dict.site.name} — ${dict.site.tagline}`,
+      template: `%s — ${dict.site.name}`,
+    },
+    description: dict.site.description,
+    openGraph: {
+      title: dict.site.name,
+      description: dict.site.description,
+      type: "website",
+    },
+  };
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+  const dict = getDict(locale as Locale);
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Nav locale={locale as Locale} dict={dict} />
+      <main className="flex-1">{children}</main>
+      <Footer dict={dict} />
+    </div>
+  );
+}
