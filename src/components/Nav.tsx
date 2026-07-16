@@ -30,6 +30,9 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
     { href: `/${locale}`, label: dict.nav.home, exact: true },
     { href: `/${locale}/catalog`, label: dict.nav.catalog },
     { href: `/${locale}/builder`, label: dict.nav.builder },
+    { href: `/${locale}/rankings`, label: dict.nav.rankings },
+    { href: `/${locale}/tournaments`, label: dict.nav.tournaments },
+    { href: `/${locale}/clubs`, label: dict.nav.clubs },
   ];
 
   const isActive = (href: string, exact?: boolean) =>

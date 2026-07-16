@@ -20,6 +20,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHEET_ID = "1TBHOpcsv25bBfWERq14CBIy4P1G7j-qpPhmclx_nTWI";
 const BLADES_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 const PARTS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("零件圖鑑")}`;
+const RANKINGS_SHEET_ID = "18eTJLjyNmqDz5MH0-VD03TX4wobUCdHdrRMyo4uojDo";
+const RANKINGS_URL = `https://docs.google.com/spreadsheets/d/${RANKINGS_SHEET_ID}/gviz/tq?tqx=out:csv`;
+const RANKINGS_LIMIT = 100;
 
 const toHans = OpenCC.Converter({ from: "tw", to: "cn" });
 
@@ -247,6 +250,62 @@ async function main() {
   await mkdir(path.dirname(dest), { recursive: true });
   await writeFile(dest, JSON.stringify(out, null, 2), "utf8");
   console.log(`Wrote ${dest}`);
+
+  await fetchRankings();
+}
+
+/** Tournament combo stats (wins/podiums per combo) from the community results sheet. */
+async function fetchRankings() {
+  console.log("Fetching tournament rankings...");
+  const rows = await fetchCsv(RANKINGS_URL);
+  const h = rows[0];
+  const R = {
+    rank: col(h, "site_recommendation_rank"),
+    bladeCode: col(h, "site_blade_id"),
+    bladeName: col(h, "site_blade_name"),
+    ratchet: col(h, "ratchet"),
+    bit: col(h, "bit"),
+    score: col(h, "recommendation_score"),
+    wins: col(h, "total_wins"),
+    first: col(h, "first_count"),
+    second: col(h, "second_count"),
+    third: col(h, "third_count"),
+    champRate: col(h, "champion_rate"),
+    recent90: col(h, "recent_90_count"),
+    lastDate: col(h, "last_date"),
+  };
+  const num = (v) => {
+    const n = Number(clean(v));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const rankings = rows
+    .slice(1)
+    .map((r) => ({
+      rank: num(r[R.rank]),
+      bladeCode: clean(r[R.bladeCode]),
+      bladeZh: toHans(clean(r[R.bladeName])),
+      ratchet: clean(r[R.ratchet]),
+      bit: clean(r[R.bit]),
+      score: Math.round(num(r[R.score])),
+      wins: num(r[R.wins]),
+      first: num(r[R.first]),
+      second: num(r[R.second]),
+      third: num(r[R.third]),
+      champRate: num(r[R.champRate]),
+      recent90: num(r[R.recent90]),
+      lastDate: clean(r[R.lastDate]) || null,
+    }))
+    .filter((r) => r.rank > 0 && r.bladeCode)
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, RANKINGS_LIMIT);
+
+  const dest = path.join(ROOT, "src", "data", "rankings.json");
+  await writeFile(
+    dest,
+    JSON.stringify({ fetchedAt: new Date().toISOString(), rankings }, null, 2),
+    "utf8"
+  );
+  console.log(`Wrote ${dest} (${rankings.length} combos)`);
 }
 
 main().catch((err) => {

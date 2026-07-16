@@ -124,6 +124,45 @@ export default async function HomePage({
           </div>
         </div>
       </section>
+
+      {/* Compete & connect */}
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { href: `/${locale}/rankings`, t: dict.nav.rankings, x: dict.rankings.subtitle },
+            { href: `/${locale}/tournaments`, t: dict.nav.tournaments, x: dict.tournaments.subtitle },
+            { href: `/${locale}/clubs`, t: dict.nav.clubs, x: dict.clubs.subtitle },
+          ].map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="panel group p-5 transition hover:-translate-y-0.5 hover:border-accent/50"
+            >
+              <div className="font-display text-lg font-bold tracking-wide group-hover:text-accent">
+                {card.t} →
+              </div>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-dim">{card.x}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* About */}
+      <section className="border-t border-edge bg-panel/40">
+        <div className="mx-auto max-w-6xl px-4 py-14">
+          <div className="panel bg-grid mx-auto max-w-3xl p-8 text-center">
+            <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full border border-accent/40 font-display text-2xl font-black text-accent text-glow">
+              A
+            </div>
+            <h2 className="font-display text-2xl font-bold tracking-wide">
+              {dict.about.title}
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-ink">{dict.about.p1}</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink-dim">{dict.about.p2}</p>
+            <p className="mt-4 font-display text-sm font-bold text-accent">{dict.about.sig}</p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
