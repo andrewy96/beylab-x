@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import { AuthProvider } from "@/lib/auth";
 import { getDict, isLocale, locales, Locale } from "@/i18n";
 
 export function generateStaticParams() {
@@ -42,10 +43,12 @@ export default async function LocaleLayout({
   const dict = getDict(locale as Locale);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Nav locale={locale as Locale} dict={dict} />
-      <main className="flex-1">{children}</main>
-      <Footer dict={dict} />
-    </div>
+    <AuthProvider>
+      <div className="flex min-h-screen flex-col">
+        <Nav locale={locale as Locale} dict={dict} />
+        <main className="flex-1">{children}</main>
+        <Footer dict={dict} />
+      </div>
+    </AuthProvider>
   );
 }

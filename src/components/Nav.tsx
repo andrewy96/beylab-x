@@ -4,6 +4,31 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Dict, Locale, switchLocalePath } from "@/i18n";
+import { useAuth } from "@/lib/auth";
+
+function AuthChip({ locale, dict }: { locale: Locale; dict: Dict }) {
+  const { enabled, profile, loading } = useAuth();
+  if (!enabled || loading) return null;
+  if (profile) {
+    return (
+      <Link
+        href={`/${locale}/me`}
+        className="flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20"
+      >
+        @{profile.handle}
+        <span className="text-bal">★{profile.stars}</span>
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href={`/${locale}/login`}
+      className="rounded-md border border-edge px-2.5 py-1 text-xs font-semibold text-ink-dim transition hover:border-accent hover:text-accent"
+    >
+      {dict.nav.login}
+    </Link>
+  );
+}
 
 function LangSwitcher({ locale }: { locale: Locale }) {
   const pathname = usePathname();
@@ -34,6 +59,7 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
     { href: `/${locale}/tournaments`, label: dict.nav.tournaments },
     { href: `/${locale}/clubs`, label: dict.nav.clubs },
     { href: `/${locale}/market`, label: dict.nav.market },
+    { href: `/${locale}/battle`, label: dict.nav.battle },
   ];
 
   const isActive = (href: string, exact?: boolean) =>
@@ -61,7 +87,8 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
               {l.label}
             </Link>
           ))}
-          <div className="ml-2">
+          <div className="ml-2 flex items-center gap-2">
+            <AuthChip locale={locale} dict={dict} />
             <Suspense fallback={null}>
               <LangSwitcher locale={locale} />
             </Suspense>
@@ -69,6 +96,7 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
         </div>
 
         <div className="ml-auto flex items-center gap-2 sm:hidden">
+          <AuthChip locale={locale} dict={dict} />
           <Suspense fallback={null}>
             <LangSwitcher locale={locale} />
           </Suspense>
