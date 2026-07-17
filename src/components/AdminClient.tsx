@@ -12,6 +12,10 @@ interface AdminUser {
   display_name: string;
   avatar_url: string | null;
   city: string | null;
+  phone: string;
+  gender: "male" | "female" | null;
+  birthday: string | null;
+  age: number | null;
   stars: number;
   wins: number;
   losses: number;
@@ -19,9 +23,13 @@ interface AdminUser {
 }
 
 interface ProfileForm {
+  handle: string;
+  phone: string;
   displayName: string;
   city: string;
   avatarUrl: string;
+  gender: "" | "male" | "female";
+  birthday: string;
 }
 
 function fmtDate(iso: string, locale: Locale) {
@@ -77,8 +85,12 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
             user.id,
             {
               displayName: user.display_name || "",
+              handle: user.handle,
+              phone: user.phone || "",
               city: user.city ?? "",
               avatarUrl: user.avatar_url ?? "",
+              gender: user.gender ?? "",
+              birthday: user.birthday ?? "",
             },
           ])
         )
@@ -127,9 +139,13 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
     setProfileForms((current) => ({
       ...current,
       [user.id]: {
+        handle: user.handle,
+        phone: user.phone || "",
         displayName: user.display_name || "",
         city: user.city ?? "",
         avatarUrl: user.avatar_url ?? "",
+        gender: user.gender ?? "",
+        birthday: user.birthday ?? "",
       },
     }));
     if (profile?.id === user.id) refreshProfile();
@@ -139,9 +155,13 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
     setProfileForms((current) => ({
       ...current,
       [id]: {
+        handle: current[id]?.handle ?? "",
+        phone: current[id]?.phone ?? "",
         displayName: current[id]?.displayName ?? "",
         city: current[id]?.city ?? "",
         avatarUrl: current[id]?.avatarUrl ?? "",
+        gender: current[id]?.gender ?? "",
+        birthday: current[id]?.birthday ?? "",
         [field]: value,
       },
     }));
@@ -157,9 +177,13 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
       method: "PATCH",
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
+        handle: form.handle,
+        phone: form.phone,
         displayName: form.displayName,
         city: form.city || null,
         avatarUrl: form.avatarUrl.trim() || null,
+        gender: form.gender || null,
+        birthday: form.birthday || null,
       }),
     });
     setBusy(null);
@@ -196,6 +220,32 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
     syncUser(data.user);
     setPasswords((current) => ({ ...current, [user.id]: "" }));
     setMessage(dict.admin.passwordUpdated);
+  };
+
+  const deleteUser = async (user: AdminUser) => {
+    const headers = authHeaders();
+    if (!headers) return;
+    if (profile?.id === user.id) {
+      setMessage(dict.admin.cannotDeleteSelf);
+      return;
+    }
+    const ok = window.confirm(
+      dict.admin.deleteConfirm.replace("{handle}", `@${user.handle}`)
+    );
+    if (!ok) return;
+    setBusy(`${user.id}:delete`);
+    setMessage(null);
+    const res = await fetch(`/api/admin/users/${user.id}`, {
+      method: "DELETE",
+      headers,
+    });
+    setBusy(null);
+    if (!res.ok) {
+      setMessage(dict.admin.error);
+      return;
+    }
+    setUsers((current) => current.filter((u) => u.id !== user.id));
+    setMessage(dict.admin.userDeleted);
   };
 
   if (!enabled) {
@@ -246,9 +296,12 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
       {message && (
         <p
           className={`text-sm font-semibold ${
-            [dict.admin.updated, dict.admin.profileUpdated, dict.admin.passwordUpdated].includes(
-              message
-            )
+            [
+              dict.admin.updated,
+              dict.admin.profileUpdated,
+              dict.admin.passwordUpdated,
+              dict.admin.userDeleted,
+            ].includes(message)
               ? "text-accent"
               : "text-atk"
           }`}
@@ -266,9 +319,13 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
           {users.map((user) => {
             const delta = Number(customDeltas[user.id] ?? "1");
             const form = profileForms[user.id] ?? {
+              handle: user.handle,
+              phone: user.phone || "",
               displayName: user.display_name || "",
               city: user.city ?? "",
               avatarUrl: user.avatar_url ?? "",
+              gender: user.gender ?? "",
+              birthday: user.birthday ?? "",
             };
             const rowBusy = !!busy?.startsWith(`${user.id}:`);
             return (
@@ -297,11 +354,13 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
                       <span className="text-xs text-ink-dim">
                         {user.display_name || user.handle}
                         {user.city ? ` · ${user.city}` : ""}
+                        {user.phone ? ` · ${user.phone}` : ""}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-ink-dim">
                       {dict.admin.memberSince} {fmtDate(user.created_at, locale)} ·{" "}
                       {dict.admin.record} {user.wins}-{user.losses}
+                      {user.age != null ? ` · ${dict.auth.age} ${user.age}` : ""}
                     </div>
                   </div>
 
@@ -360,7 +419,22 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
                   <div className="mb-2 font-display text-xs font-bold tracking-wider text-accent-2">
                     {dict.admin.profileControls}
                   </div>
-                  <div className="grid gap-2 lg:grid-cols-[1fr_12rem_1fr_auto]">
+                  <div className="grid gap-2 lg:grid-cols-[10rem_12rem_1fr_12rem]">
+                    <input
+                      value={form.handle}
+                      onChange={(e) => updateProfileForm(user.id, "handle", e.target.value)}
+                      maxLength={20}
+                      placeholder={dict.auth.handle}
+                      aria-label={dict.auth.handle}
+                      className="rounded-md border border-edge bg-panel px-3 py-2 text-sm outline-none transition placeholder:text-ink-dim/60 focus:border-accent"
+                    />
+                    <input
+                      value={form.phone}
+                      onChange={(e) => updateProfileForm(user.id, "phone", e.target.value)}
+                      placeholder={dict.auth.phonePlaceholder}
+                      aria-label={dict.auth.phone}
+                      className="rounded-md border border-edge bg-panel px-3 py-2 text-sm outline-none transition placeholder:text-ink-dim/60 focus:border-accent"
+                    />
                     <input
                       value={form.displayName}
                       onChange={(e) =>
@@ -383,6 +457,29 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="mt-2 grid gap-2 lg:grid-cols-[10rem_12rem_1fr_auto_auto]">
+                    <select
+                      value={form.gender}
+                      onChange={(e) =>
+                        updateProfileForm(user.id, "gender", e.target.value)
+                      }
+                      aria-label={dict.auth.gender}
+                      className="rounded-md border border-edge bg-panel px-3 py-2 text-sm outline-none transition focus:border-accent"
+                    >
+                      <option value="">-</option>
+                      <option value="male">{dict.auth.genderMale}</option>
+                      <option value="female">{dict.auth.genderFemale}</option>
+                    </select>
+                    <input
+                      type="date"
+                      value={form.birthday}
+                      onChange={(e) =>
+                        updateProfileForm(user.id, "birthday", e.target.value)
+                      }
+                      aria-label={dict.auth.birthday}
+                      className="rounded-md border border-edge bg-panel px-3 py-2 text-sm outline-none transition focus:border-accent"
+                    />
                     <input
                       type="url"
                       value={form.avatarUrl}
@@ -400,6 +497,13 @@ export default function AdminClient({ locale, dict }: { locale: Locale; dict: Di
                       className="clip-x bg-accent px-5 py-2.5 font-display text-xs font-bold tracking-wider text-bg transition enabled:hover:brightness-110 disabled:opacity-50"
                     >
                       {dict.profile.saveProfile}
+                    </button>
+                    <button
+                      onClick={() => deleteUser(user)}
+                      disabled={rowBusy || profile?.id === user.id}
+                      className="clip-x border border-atk/50 bg-atk/10 px-5 py-2.5 font-display text-xs font-bold tracking-wider text-atk transition enabled:hover:bg-atk enabled:hover:text-bg disabled:opacity-50"
+                    >
+                      {dict.admin.deleteUser}
                     </button>
                   </div>
 

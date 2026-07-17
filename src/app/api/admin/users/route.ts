@@ -2,6 +2,27 @@ import { NextResponse } from "next/server";
 import { requireSuperadmin } from "@/lib/adminServer";
 
 const HANDLE_SEARCH_RE = /[^a-zA-Z0-9_]/g;
+const PROFILE_SELECT =
+  "id,handle,display_name,avatar_url,city,stars,wins,losses,created_at";
+
+interface ProfileRow {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  city: string | null;
+  stars: number;
+  wins: number;
+  losses: number;
+  created_at: string;
+}
+
+interface PrivateRow {
+  id: string;
+  gender: "male" | "female" | null;
+  birthday: string | null;
+  age: number | null;
+}
 
 export async function GET(request: Request) {
   const auth = await requireSuperadmin(request);
@@ -13,7 +34,7 @@ export async function GET(request: Request) {
 
   let query = auth.admin
     .from("profiles")
-    .select("id,handle,display_name,avatar_url,city,stars,wins,losses,created_at")
+    .select(PROFILE_SELECT)
     .order("created_at", { ascending: false })
     .limit(30);
 
@@ -27,5 +48,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "load_failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ users: data ?? [] });
+  const profiles = (data ?? []) as ProfileRow[];
+  const ids = profiles.map((profile) => profile.id);
+  const { data: privateRows } = ids.length
+    ? await auth.admin
+        .from("profile_private")
+        .select("id,gender,birthday,age")
+        .in("id", ids)
+    : { data: [] };
+  const privateById = new Map(
+    ((privateRows ?? []) as PrivateRow[]).map((row) => [row.id, row])
+  );
+
+  const users = await Promise.all(
+    profiles.map(async (profile) => {
+      const { data: authUser } = await auth.admin.auth.admin.getUserById(profile.id);
+      const user = authUser.user;
+      if (user?.deleted_at) return null;
+      const priv = privateById.get(profile.id);
+      return {
+        ...profile,
+        phone: user?.phone ?? "",
+        gender: priv?.gender ?? null,
+        birthday: priv?.birthday ?? null,
+        age: priv?.age ?? null,
+      };
+    })
+  );
+
+  return NextResponse.json({ users: users.filter(Boolean) });
 }
