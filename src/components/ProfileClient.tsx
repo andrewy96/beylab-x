@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Dict, Locale } from "@/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase, Match, MY_CITIES, Profile, Round } from "@/lib/supabase";
+import { profileDisplayName } from "@/lib/profileName";
 
 const FINISH_COLOR: Record<string, string> = {
   spin: "var(--color-sta)",
@@ -28,6 +29,25 @@ function fmtDate(iso: string, locale: Locale) {
   }).format(new Date(iso));
 }
 
+function ageFromBirthday(birthday: string | null): number | null {
+  if (!birthday) return null;
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const beforeBirthday =
+    today.getMonth() < birthDate.getMonth() ||
+    (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate());
+  if (beforeBirthday) age -= 1;
+  return age;
+}
+
+function genderLabel(gender: Profile["gender"], dict: Dict) {
+  if (gender === "male") return dict.auth.genderMale;
+  if (gender === "female") return dict.auth.genderFemale;
+  return null;
+}
+
 function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div className="panel px-4 py-3 text-center">
@@ -42,6 +62,15 @@ function StatCard({ label, value, accent }: { label: string; value: string | num
 export function ProfileHeader({ p, locale, dict }: { p: Profile; locale: Locale; dict: Dict }) {
   const total = p.wins + p.losses;
   const rate = total > 0 ? Math.round((p.wins / total) * 100) : 0;
+  const details = [
+    `@${p.handle}`,
+    p.city,
+    genderLabel(p.gender, dict),
+    p.age != null ? `${dict.auth.age} ${p.age}` : null,
+    p.birthday ? `${dict.auth.birthday} ${fmtDate(p.birthday, locale)}` : null,
+    `${dict.battle.memberSince} ${fmtDate(p.created_at, locale)}`,
+  ].filter(Boolean);
+
   return (
     <div>
       <div className="flex items-center gap-4">
@@ -61,11 +90,7 @@ export function ProfileHeader({ p, locale, dict }: { p: Profile; locale: Locale;
           <h1 className="truncate font-display text-2xl font-bold tracking-wide">
             {p.display_name || p.handle}
           </h1>
-          <div className="text-sm text-ink-dim">
-            @{p.handle}
-            {p.city ? ` · ${p.city}` : ""} · {dict.battle.memberSince}{" "}
-            {fmtDate(p.created_at, locale)}
-          </div>
+          <div className="text-sm text-ink-dim">{details.join(" / ")}</div>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-4 gap-2">
@@ -118,7 +143,7 @@ export function MatchRow({
             href={`/${locale}/players/${opp?.handle ?? ""}`}
             className="font-semibold text-ink hover:text-accent"
           >
-            @{opp?.handle ?? "?"}
+            {profileDisplayName(opp)}
           </Link>
         </span>
         {m.status === "confirmed" && m.stars_moved != null && (
@@ -185,6 +210,8 @@ function AccountSettings({
 }) {
   const [displayName, setDisplayName] = useState(profile.display_name || "");
   const [city, setCity] = useState(profile.city ?? "");
+  const [gender, setGender] = useState<Profile["gender"] | "">(profile.gender ?? "");
+  const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
@@ -196,7 +223,9 @@ function AccountSettings({
   useEffect(() => {
     setDisplayName(profile.display_name || "");
     setCity(profile.city ?? "");
-  }, [profile.city, profile.display_name]);
+    setGender(profile.gender ?? "");
+    setBirthday(profile.birthday ?? "");
+  }, [profile.birthday, profile.city, profile.display_name, profile.gender]);
 
   const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!supabase) return;
@@ -250,6 +279,12 @@ function AccountSettings({
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
     if (!supabase) return;
+    const nextAge = ageFromBirthday(birthday);
+    if (birthday && (nextAge == null || nextAge < 0 || nextAge > 120)) {
+      setMessage(null);
+      setError(dict.auth.birthdayInvalid);
+      return;
+    }
     setProfileBusy(true);
     setMessage(null);
     setError(null);
@@ -258,6 +293,9 @@ function AccountSettings({
       .update({
         display_name: displayName.trim(),
         city: city || null,
+        gender: gender || null,
+        birthday: birthday || null,
+        age: nextAge,
       })
       .eq("id", profile.id);
 
@@ -360,6 +398,38 @@ function AccountSettings({
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className={labelCls}>{dict.auth.gender}</label>
+              <select
+                value={gender ?? ""}
+                onChange={(e) => setGender(e.target.value as Profile["gender"] | "")}
+                className={inputCls}
+              >
+                <option value="">-</option>
+                <option value="male">{dict.auth.genderMale}</option>
+                <option value="female">{dict.auth.genderFemale}</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{dict.auth.birthday}</label>
+              <input
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>{dict.auth.age}</label>
+              <input
+                value={ageFromBirthday(birthday) ?? ""}
+                readOnly
+                aria-readonly="true"
+                placeholder={dict.auth.ageAuto}
+                className={`${inputCls} text-ink-dim`}
+              />
             </div>
             <div className="sm:col-span-2">
               <button

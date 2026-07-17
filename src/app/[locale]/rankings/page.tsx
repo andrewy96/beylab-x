@@ -5,6 +5,7 @@ import { getDict, isLocale, Locale, locales } from "@/i18n";
 import { rankings, rankingsUpdatedAt, rankedComboName } from "@/data/rankings";
 import PartImage from "@/components/PartImage";
 import { TYPE_COLOR } from "@/components/badges";
+import PlayerRankingsClient from "@/components/PlayerRankingsClient";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -44,6 +45,10 @@ export default async function RankingsPage({
       <p className="mb-8 mt-1 text-xs text-ink-dim/70">
         {dict.rankings.updated}: {updated}
       </p>
+
+      <div className="mb-10">
+        <PlayerRankingsClient locale={locale} dict={dict} />
+      </div>
 
       {/* Podium */}
       <div className="mb-10 grid gap-3 sm:grid-cols-3">

@@ -7,6 +7,7 @@ import {
   ratchets,
   bits,
   assists,
+  lockChips,
   tierRank,
   Blade,
   Line,
@@ -14,7 +15,7 @@ import {
 } from "@/data/parts";
 import { BladeCard, SimplePartCard } from "./PartCard";
 
-type Tab = "blades" | "ratchets" | "bits" | "assists";
+type Tab = "blades" | "lockChips" | "ratchets" | "bits" | "assists";
 type Sort = "tier" | "name" | "code";
 
 const TYPES: PartType[] = ["attack", "defense", "stamina", "balance", "special"];
@@ -87,6 +88,18 @@ export default function CatalogClient({
       ),
     [query]
   );
+  const filteredLockChips = useMemo(
+    () =>
+      lockChips.filter(
+        (l) =>
+          !query ||
+          l.id.toLowerCase().includes(query) ||
+          l.name.toLowerCase().includes(query) ||
+          l.zh.toLowerCase().includes(query) ||
+          l.zhHant.toLowerCase().includes(query)
+      ),
+    [query]
+  );
   const filteredAssists = useMemo(
     () =>
       assists.filter(
@@ -100,6 +113,7 @@ export default function CatalogClient({
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "blades", label: dict.catalog.tabBlades, count: filteredBlades.length },
+    { key: "lockChips", label: dict.catalog.tabLockChips, count: filteredLockChips.length },
     { key: "ratchets", label: dict.catalog.tabRatchets, count: filteredRatchets.length },
     { key: "bits", label: dict.catalog.tabBits, count: filteredBits.length },
     { key: "assists", label: dict.catalog.tabAssists, count: filteredAssists.length },
@@ -183,6 +197,23 @@ export default function CatalogClient({
             ))}
           </div>
         ))}
+
+      {tab === "lockChips" && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          {filteredLockChips.map((l) => (
+            <SimplePartCard
+              key={l.id}
+              category="lock-chip"
+              id={l.id}
+              title={locale === "zh" ? l.zh : l.id}
+              subtitle={l.hasMetal ? dict.part.metalLockChip : locale === "zh" ? dict.part.lockChip : l.name}
+              image={l.image}
+              locale={locale}
+              badge="CX"
+            />
+          ))}
+        </div>
+      )}
 
       {tab === "ratchets" && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">

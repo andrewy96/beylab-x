@@ -11,6 +11,19 @@ const inputCls =
   "w-full rounded-md border border-edge bg-panel px-3 py-2.5 text-sm outline-none transition placeholder:text-ink-dim/50 focus:border-accent";
 const labelCls = "mb-1 block text-xs font-semibold text-ink-dim";
 
+function ageFromBirthday(birthday: string): number | null {
+  if (!birthday) return null;
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const beforeBirthday =
+    today.getMonth() < birthDate.getMonth() ||
+    (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate());
+  if (beforeBirthday) age -= 1;
+  return age;
+}
+
 function NotConfigured({ dict }: { dict: Dict }) {
   return (
     <div className="panel border-accent-2/40 p-5 text-sm text-ink-dim">
@@ -93,8 +106,11 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dict }) {
   const [handle, setHandle] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [city, setCity] = useState("");
+  const [gender, setGender] = useState<"male" | "female" | "">("");
+  const [birthday, setBirthday] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const age = ageFromBirthday(birthday);
 
   if (!supabase) return <NotConfigured dict={dict} />;
 
@@ -105,6 +121,8 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dict }) {
     if (!e164) return setError(dict.auth.phoneInvalid);
     if (password.length < 8) return setError(dict.auth.passwordMin);
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(handle)) return setError(dict.auth.handleHint);
+    if (gender !== "male" && gender !== "female") return setError(dict.auth.genderRequired);
+    if (age == null || age < 0 || age > 120) return setError(dict.auth.birthdayInvalid);
     setBusy(true);
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -115,6 +133,9 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dict }) {
         handle,
         displayName,
         city,
+        gender,
+        birthday,
+        age,
       }),
     });
     if (!res.ok) {
@@ -159,6 +180,42 @@ export function RegisterForm({ locale, dict }: { locale: Locale; dict: Dict }) {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={labelCls}>{dict.auth.gender}</label>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value as "male" | "female" | "")}
+            required
+            className={inputCls}
+          >
+            <option value="">-</option>
+            <option value="male">{dict.auth.genderMale}</option>
+            <option value="female">{dict.auth.genderFemale}</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>{dict.auth.birthday}</label>
+          <input
+            type="date"
+            value={birthday}
+            onChange={(e) => setBirthday(e.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+            required
+            className={inputCls}
+          />
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>{dict.auth.age}</label>
+        <input
+          value={age == null ? "" : age}
+          readOnly
+          aria-readonly="true"
+          placeholder={dict.auth.ageAuto}
+          className={`${inputCls} text-ink-dim`}
+        />
       </div>
       <div>
         <label className={labelCls}>{dict.auth.phone}</label>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDict, isLocale, Locale, locales } from "@/i18n";
-import { blades, ratchets, bits, assists } from "@/data/parts";
+import { blades, ratchets, bits, assists, lockChips } from "@/data/parts";
 import CatalogClient from "@/components/CatalogClient";
 
 export function generateStaticParams() {
@@ -27,7 +27,7 @@ export default async function CatalogPage({
   if (!isLocale(raw)) notFound();
   const locale = raw as Locale;
   const dict = getDict(locale);
-  const total = blades.length + ratchets.length + bits.length + assists.length;
+  const total = blades.length + lockChips.length + ratchets.length + bits.length + assists.length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">

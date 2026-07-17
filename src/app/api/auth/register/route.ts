@@ -3,6 +3,22 @@ import { createClient } from "@supabase/supabase-js";
 import { normalizeMyPhone } from "@/lib/phone";
 
 const HANDLE_RE = /^[a-zA-Z0-9_]{3,20}$/;
+const BIRTHDAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function ageFromBirthday(birthday: string): number | null {
+  if (!BIRTHDAY_RE.test(birthday)) return null;
+  const birthDate = new Date(`${birthday}T00:00:00Z`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  if (birthDate.toISOString().slice(0, 10) !== birthday) return null;
+  const today = new Date();
+  let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+  const beforeBirthday =
+    today.getUTCMonth() < birthDate.getUTCMonth() ||
+    (today.getUTCMonth() === birthDate.getUTCMonth() &&
+      today.getUTCDate() < birthDate.getUTCDate());
+  if (beforeBirthday) age -= 1;
+  return age;
+}
 
 export async function POST(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,6 +42,9 @@ export async function POST(request: Request) {
   const displayName =
     typeof input.displayName === "string" ? input.displayName.trim() : "";
   const city = typeof input.city === "string" && input.city ? input.city : null;
+  const gender = typeof input.gender === "string" ? input.gender : "";
+  const birthday = typeof input.birthday === "string" ? input.birthday : "";
+  const age = ageFromBirthday(birthday);
   const e164 = normalizeMyPhone(phone);
 
   if (!e164) return NextResponse.json({ error: "invalid_phone" }, { status: 400 });
@@ -34,6 +53,12 @@ export async function POST(request: Request) {
   }
   if (!HANDLE_RE.test(handle)) {
     return NextResponse.json({ error: "invalid_handle" }, { status: 400 });
+  }
+  if (gender !== "male" && gender !== "female") {
+    return NextResponse.json({ error: "invalid_gender" }, { status: 400 });
+  }
+  if (age == null || age < 0 || age > 120) {
+    return NextResponse.json({ error: "invalid_birthday" }, { status: 400 });
   }
 
   const admin = createClient(url, serviceRoleKey, {
@@ -48,11 +73,24 @@ export async function POST(request: Request) {
       handle,
       display_name: displayName || handle,
       city,
+      gender,
+      birthday,
+      age,
     },
   });
 
   if (error || !data.user) {
     return NextResponse.json({ error: "register_failed" }, { status: 400 });
+  }
+
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update({ gender, birthday, age })
+    .eq("id", data.user.id);
+
+  if (profileError) {
+    await admin.auth.admin.deleteUser(data.user.id);
+    return NextResponse.json({ error: "profile_update_failed" }, { status: 400 });
   }
 
   return NextResponse.json({ id: data.user.id });

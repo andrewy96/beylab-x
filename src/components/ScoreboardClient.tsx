@@ -13,6 +13,19 @@ import {
   FINISH_POINTS,
   DEFAULT_WIN_SCORE,
 } from "@/lib/supabase";
+import { profileDisplayName } from "@/lib/profileName";
+import {
+  ShareCardData,
+  ShareOutcome,
+  finishShareLabels,
+  outcomeHeader,
+  shareDateLabel,
+  shareSiteLabel,
+} from "@/lib/shareCard";
+import ShareMatchModal from "./ShareMatchModal";
+
+const CHALLENGE_SELECT =
+  "*, host_profile:profiles!challenges_host_fkey(*), opponent_profile:profiles!challenges_opponent_fkey(*), player1_profile:profiles!challenges_player1_fkey(*), player2_profile:profiles!challenges_player2_fkey(*)";
 
 const FINISHES: { key: Finish; color: string; label: (d: Dict) => string }[] = [
   { key: "spin", color: "var(--color-sta)", label: (d) => d.battle.finishSpin },
@@ -24,7 +37,7 @@ const FINISHES: { key: Finish; color: string; label: (d: Dict) => string }[] = [
 export default function ScoreboardClient({ locale, dict }: { locale: Locale; dict: Dict }) {
   const params = useSearchParams();
   const challengeId = params.get("c");
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [name1, setName1] = useState("");
@@ -32,22 +45,23 @@ export default function ScoreboardClient({ locale, dict }: { locale: Locale; dic
   const [freeTargetScore, setFreeTargetScore] = useState(DEFAULT_WIN_SCORE);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [reportState, setReportState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (!supabase || !challengeId) return;
     supabase
       .from("challenges")
-      .select(
-        "*, host_profile:profiles!challenges_host_fkey(*), opponent_profile:profiles!challenges_opponent_fkey(*)"
-      )
+      .select(CHALLENGE_SELECT)
       .eq("id", challengeId)
       .maybeSingle()
       .then(({ data }) => {
         const c = data as unknown as Challenge | null;
         if (c && c.status === "accepted") {
           setChallenge(c);
-          setName1(`@${c.host_profile?.handle ?? "?"}`);
-          setName2(`@${c.opponent_profile?.handle ?? "?"}`);
+          const p1 = c.play_mode === "judge" ? c.player1_profile : c.host_profile;
+          const p2 = c.play_mode === "judge" ? c.player2_profile : c.opponent_profile;
+          setName1(profileDisplayName(p1));
+          setName2(profileDisplayName(p2));
         }
       });
   }, [challengeId]);
@@ -76,8 +90,12 @@ export default function ScoreboardClient({ locale, dict }: { locale: Locale; dic
     setReportState("idle");
   };
 
-  const isParticipant =
-    !!profile && !!challenge && (profile.id === challenge.host || profile.id === challenge.opponent);
+  const canReport =
+    !!profile &&
+    !!challenge &&
+    (challenge.play_mode === "judge"
+      ? profile.id === challenge.host
+      : profile.id === challenge.host || profile.id === challenge.opponent);
 
   const report = async () => {
     if (!supabase || !challenge || !winner) return;
@@ -88,13 +106,61 @@ export default function ScoreboardClient({ locale, dict }: { locale: Locale; dic
       s_host: s1,
       s_opp: s2,
     });
-    setReportState(error ? "error" : "done");
+    if (error) {
+      setReportState("error");
+      return;
+    }
+    await refreshProfile();
+    setReportState("done");
   };
 
   const players: { n: 1 | 2; name: string; setName: (v: string) => void; score: number }[] = [
     { n: 1, name: name1, setName: setName1, score: s1 },
     { n: 2, name: name2, setName: setName2, score: s2 },
   ];
+
+  const buildShareData = (winnerSide: 1 | 2): ShareCardData => {
+    // side 1 = host / player1, side 2 = opponent / player2 (matches report_match args)
+    const viewerSide: 1 | 2 | null =
+      !profile || !challenge
+        ? null
+        : challenge.play_mode === "judge"
+          ? profile.id === challenge.player1
+            ? 1
+            : profile.id === challenge.player2
+              ? 2
+              : null
+          : profile.id === challenge.host
+            ? 1
+            : profile.id === challenge.opponent
+              ? 2
+              : null;
+    const outcome: ShareOutcome =
+      viewerSide === null ? "neutral" : viewerSide === winnerSide ? "victory" : "defeat";
+    return {
+      p1Name: name1 || dict.battle.player1,
+      p2Name: name2 || dict.battle.player2,
+      p1Score: s1,
+      p2Score: s2,
+      winnerSide,
+      outcome,
+      rounds,
+      dateLabel: shareDateLabel(new Date(), locale),
+      formatLabel:
+        challenge?.format === "team"
+          ? dict.battle.teamFormat.replace(/\{count\}/g, String(challenge.team_size ?? 1))
+          : dict.battle.singleBattle,
+      stars: challenge?.wager ?? 0,
+      firstToLabel,
+      locale,
+      labels: {
+        header: outcomeHeader(outcome, dict),
+        winner: dict.battle.winner,
+        finish: finishShareLabels(dict),
+        url: shareSiteLabel(),
+      },
+    };
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -195,7 +261,7 @@ export default function ScoreboardClient({ locale, dict }: { locale: Locale; dic
         >
           {dict.battle.resetMatch}
         </button>
-        {winner && challenge && isParticipant && reportState !== "done" && (
+        {winner && challenge && canReport && reportState !== "done" && (
           <button
             onClick={report}
             disabled={reportState === "busy"}
@@ -204,7 +270,24 @@ export default function ScoreboardClient({ locale, dict }: { locale: Locale; dic
             {dict.battle.reportResult}
           </button>
         )}
+        {winner && (
+          <button
+            onClick={() => setShareOpen(true)}
+            className="clip-x border border-accent-2/50 bg-accent-2/10 px-5 py-2.5 font-display text-xs font-bold tracking-wider text-accent-2 transition hover:bg-accent-2/20"
+          >
+            ⤴ {dict.battle.share}
+          </button>
+        )}
       </div>
+
+      {shareOpen && winner && (
+        <ShareMatchModal
+          data={buildShareData(winner)}
+          fileId={challenge?.id ?? "freeplay"}
+          dict={dict}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
 
       {reportState === "done" && (
         <p className="mt-4 text-center text-sm font-semibold text-accent">

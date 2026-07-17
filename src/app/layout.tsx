@@ -13,7 +13,7 @@ const notoSC = Noto_Sans_SC({
 export const metadata: Metadata = {
   title: "BEYLAB X",
   description:
-    "The Beyblade X catalog & combo lab — browse every blade, ratchet and bit, build combos and share them.",
+    "The Beyblade X catalog & combo lab - browse every blade, lock chip, assist blade, ratchet and bit, build combos and share them.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

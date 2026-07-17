@@ -5,10 +5,14 @@ import Link from "next/link";
 import { Dict, Locale } from "@/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase, Challenge, DEFAULT_WIN_SCORE, MY_CITIES } from "@/lib/supabase";
+import { profileDisplayName } from "@/lib/profileName";
 
 const inputCls =
   "w-full rounded-md border border-edge bg-panel px-3 py-2 text-sm outline-none transition placeholder:text-ink-dim/50 focus:border-accent";
+const CHALLENGE_SELECT =
+  "*, host_profile:profiles!challenges_host_fkey(*), opponent_profile:profiles!challenges_opponent_fkey(*), player1_profile:profiles!challenges_player1_fkey(*), player2_profile:profiles!challenges_player2_fkey(*)";
 type ChallengeFormat = Challenge["format"];
+type ChallengeMode = Challenge["play_mode"];
 
 function StatusChip({ status, dict }: { status: Challenge["status"]; dict: Dict }) {
   const map = {
@@ -53,8 +57,20 @@ function ChallengeCard({
   onCancel: (c: Challenge) => void;
   busy: boolean;
 }) {
-  const isHost = meId === c.host;
-  const isParticipant = meId === c.host || meId === c.opponent;
+  const isJudged = c.play_mode === "judge";
+  const isJudge = isJudged && meId === c.host;
+  const isHostPlayer = !isJudged && meId === c.host;
+  const p1Profile = isJudged ? c.player1_profile : c.host_profile;
+  const p2Profile = isJudged ? c.player2_profile : c.opponent_profile;
+  const isParticipant = isJudged
+    ? meId === c.player1 || meId === c.player2
+    : meId === c.host || meId === c.opponent;
+  const canJoin =
+    c.status === "open" &&
+    !!meId &&
+    (isJudged ? !isJudge && !isParticipant : !isHostPlayer);
+  const canCancel = c.status === "open" && (isJudged ? isJudge : isHostPlayer);
+  const canScore = c.status === "accepted" && (isJudged ? isJudge : isParticipant);
   const when = fmtWhen(c.battle_at, locale);
   const format = c.format ?? "single";
   const teamSize = c.team_size ?? 1;
@@ -63,27 +79,55 @@ function ChallengeCard({
     format === "team"
       ? dict.battle.teamFormat.replace("{count}", String(teamSize))
       : dict.battle.singleBattle;
+  const joinLabel =
+    isJudged && c.player1
+      ? dict.battle.joinAsPlayer2
+      : isJudged
+        ? dict.battle.joinAsPlayer1
+        : dict.battle.accept;
+
+  const renderPlayer = (
+    profile: Challenge["host_profile"] | Challenge["opponent_profile"],
+    fallback: string,
+    accent = false
+  ) => {
+    if (!profile?.handle) {
+      return <span className="font-semibold text-ink-dim">{fallback}</span>;
+    }
+
+    return (
+      <Link
+        href={`/${locale}/players/${profile.handle}`}
+        className={`font-semibold hover:text-accent ${accent ? "text-accent" : "text-ink"}`}
+      >
+        {profileDisplayName(profile)}
+      </Link>
+    );
+  };
 
   return (
     <div className="panel flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link
-            href={`/${locale}/players/${c.host_profile?.handle ?? ""}`}
-            className="font-semibold hover:text-accent"
-          >
-            @{c.host_profile?.handle}
-          </Link>
-          {c.opponent_profile && (
-            <span className="text-sm text-ink-dim">
-              {" "}vs{" "}
-              <Link
-                href={`/${locale}/players/${c.opponent_profile.handle}`}
-                className="font-semibold text-ink hover:text-accent"
-              >
-                @{c.opponent_profile.handle}
-              </Link>
-            </span>
+          <div className="flex flex-wrap items-center gap-1 text-base">
+            {renderPlayer(p1Profile, dict.battle.openPlayerSlot, !isJudged)}
+            <span className="text-sm text-ink-dim">vs</span>
+            {renderPlayer(p2Profile, dict.battle.openPlayerSlot)}
+          </div>
+          {isJudged && (
+            <div className="mt-0.5 text-[11px] text-ink-dim">
+              {dict.battle.judge}:{" "}
+              {c.host_profile?.handle ? (
+                <Link
+                  href={`/${locale}/players/${c.host_profile.handle}`}
+                  className="font-semibold text-ink hover:text-accent"
+                >
+                  {profileDisplayName(c.host_profile)}
+                </Link>
+              ) : (
+                profileDisplayName(c.host_profile)
+              )}
+            </div>
           )}
           <div className="mt-0.5 text-xs text-ink-dim">
             {c.city}
@@ -91,6 +135,11 @@ function ChallengeCard({
             {when ? ` · ${when}` : ""}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {isJudged && (
+              <span className="rounded bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                {dict.battle.judgedBattle}
+              </span>
+            )}
             <span className="rounded bg-accent-2/10 px-2 py-0.5 text-[10px] font-semibold text-accent-2">
               {formatLabel}
             </span>
@@ -106,16 +155,16 @@ function ChallengeCard({
       </div>
       {c.note && <p className="text-sm leading-relaxed text-ink-dim">{c.note}</p>}
       <div className="flex flex-wrap gap-2">
-        {c.status === "open" && meId && !isHost && (
+        {canJoin && (
           <button
             onClick={() => onAccept(c)}
             disabled={busy}
             className="clip-x bg-accent px-4 py-2 font-display text-xs font-bold tracking-wider text-bg transition enabled:hover:brightness-110 disabled:opacity-50"
           >
-            {dict.battle.accept}
+            {joinLabel}
           </button>
         )}
-        {c.status === "open" && isHost && (
+        {canCancel && (
           <button
             onClick={() => onCancel(c)}
             disabled={busy}
@@ -124,7 +173,7 @@ function ChallengeCard({
             {dict.battle.cancel}
           </button>
         )}
-        {c.status === "accepted" && isParticipant && (
+        {canScore && (
           <Link
             href={`/${locale}/battle/score?c=${c.id}`}
             className="clip-x bg-accent-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-bg transition hover:brightness-110"
@@ -150,6 +199,7 @@ export default function BattleBoardClient({ locale, dict }: { locale: Locale; di
   const [pCity, setPCity] = useState("Kuala Lumpur");
   const [pVenue, setPVenue] = useState("");
   const [pWhen, setPWhen] = useState("");
+  const [pMode, setPMode] = useState<ChallengeMode>("player");
   const [pFormat, setPFormat] = useState<ChallengeFormat>("single");
   const [pTeamSize, setPTeamSize] = useState(2);
   const [pWager, setPWager] = useState(1);
@@ -157,16 +207,14 @@ export default function BattleBoardClient({ locale, dict }: { locale: Locale; di
   const [pNote, setPNote] = useState("");
   const activeTeamSize = pFormat === "team" ? pTeamSize : 1;
   const minPostWager = activeTeamSize;
-  const maxPostWager = profile ? Math.min(50, profile.stars) : 0;
-  const canCoverPost = maxPostWager >= minPostWager;
+  const maxPostWager = profile ? (pMode === "judge" ? 50 : Math.min(50, profile.stars)) : 0;
+  const canCoverPost = !!profile && (pMode === "judge" || maxPostWager >= minPostWager);
 
   const load = useCallback(async () => {
     if (!supabase) return;
     let q = supabase
       .from("challenges")
-      .select(
-        "*, host_profile:profiles!challenges_host_fkey(*), opponent_profile:profiles!challenges_opponent_fkey(*)"
-      )
+      .select(CHALLENGE_SELECT)
       .order("created_at", { ascending: false })
       .limit(60);
     if (tab === "open") {
@@ -177,7 +225,9 @@ export default function BattleBoardClient({ locale, dict }: { locale: Locale; di
         setChallenges([]);
         return;
       }
-      q = q.or(`host.eq.${profile.id},opponent.eq.${profile.id}`);
+      q = q.or(
+        `host.eq.${profile.id},opponent.eq.${profile.id},player1.eq.${profile.id},player2.eq.${profile.id}`
+      );
     }
     const { data, error: err } = await q;
     if (!err) setChallenges((data as unknown as Challenge[]) ?? []);
@@ -220,6 +270,7 @@ export default function BattleBoardClient({ locale, dict }: { locale: Locale; di
     setError(null);
     const { error: err } = await supabase.from("challenges").insert({
       host: profile.id,
+      play_mode: pMode,
       city: pCity,
       venue: pVenue || null,
       battle_at: pWhen ? new Date(pWhen).toISOString() : null,
@@ -245,7 +296,7 @@ export default function BattleBoardClient({ locale, dict }: { locale: Locale; di
     setBusy(false);
     if (err) {
       setError(
-        err.message.includes("not_enough_stars")
+        err.message.includes("not_enough")
           ? dict.battle.notEnoughStars
           : dict.battle.errorGeneric
       );
@@ -312,6 +363,25 @@ export default function BattleBoardClient({ locale, dict }: { locale: Locale; di
         <form onSubmit={post} className="panel mb-6 grid gap-3 p-5 sm:grid-cols-2">
           <div className="sm:col-span-2 font-display text-sm font-bold tracking-wider">
             {dict.battle.postTitle}
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs text-ink-dim">{dict.battle.createMode}</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["player", "judge"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setPMode(mode)}
+                  className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+                    pMode === mode
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-edge bg-panel text-ink-dim hover:text-ink"
+                  }`}
+                >
+                  {mode === "player" ? dict.battle.createAsPlayer : dict.battle.createAsJudge}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs text-ink-dim">{dict.battle.eventFormat}</label>

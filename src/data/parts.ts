@@ -18,6 +18,10 @@ export interface Blade {
   canonical: string;
   en: string;
   enFull: string;
+  mainBlade: string | null;
+  mainBladeZh: string | null;
+  mainBladeZhHant: string | null;
+  lockChip: string | null;
   zh: string;
   zhHant: string;
   variant: string | null;
@@ -55,6 +59,15 @@ export interface Bit {
 export interface Assist {
   id: string;
   name: string | null;
+  image: string | null;
+}
+
+export interface LockChip {
+  id: string;
+  name: string;
+  zh: string;
+  zhHant: string;
+  hasMetal: boolean;
   image: string | null;
 }
 
@@ -117,6 +130,80 @@ function deriveLine(code: string): Line {
   return "LIMITED";
 }
 
+const CX_NAME_OVERRIDES: Record<string, { lockChip: string; mainBlade: string }> = {
+  "BXH-14": { lockChip: "Valkyrie", mainBlade: "Volt" },
+  "BXG-79": { lockChip: "Hornet", mainBlade: "Fort" },
+  "BXG-80": { lockChip: "Kraken", mainBlade: "Wriggle" },
+  "BXG-81": { lockChip: "Stag", mainBlade: "Antler" },
+};
+
+const METAL_LOCK_CHIPS = new Set(["Emperor", "Valkyrie"]);
+
+const LOCK_CHIP_NAMES: Record<string, { zh: string; zhHant: string }> = {
+  Bahamut: { zh: "龙王", zhHant: "龍王" },
+  Brachio: { zh: "腕龙", zhHant: "腕龍" },
+  Cerberus: { zh: "魔犬", zhHant: "魔犬" },
+  Drake: { zh: "龙神", zhHant: "龍神" },
+  Dran: { zh: "苍龙", zhHant: "蒼龍" },
+  Emperor: { zh: "帝王", zhHant: "帝王" },
+  Fox: { zh: "极狐", zhHant: "極狐" },
+  Hells: { zh: "恶魔", zhHant: "惡魔" },
+  Hornet: { zh: "黄蜂", zhHant: "黃蜂" },
+  Knight: { zh: "骑士", zhHant: "騎士" },
+  Kraken: { zh: "海妖", zhHant: "海妖" },
+  Pegasus: { zh: "天马", zhHant: "天馬" },
+  Perseus: { zh: "英仙", zhHant: "英仙" },
+  Phoenix: { zh: "凤凰", zhHant: "鳳凰" },
+  Ragna: { zh: "邪神", zhHant: "邪神" },
+  Rhino: { zh: "战犀", zhHant: "戰犀" },
+  Sol: { zh: "焰神", zhHant: "焰神" },
+  Stag: { zh: "雄鹿", zhHant: "雄鹿" },
+  Unicorn: { zh: "独角", zhHant: "獨角" },
+  Valkyrie: { zh: "战神", zhHant: "戰神" },
+  Whale: { zh: "巨鲸", zhHant: "巨鯨" },
+  Wizard: { zh: "魔导", zhHant: "魔導" },
+  Wolf: { zh: "银狼", zhHant: "銀狼" },
+};
+
+function stripLockChipPrefix(name: string, prefix: string | undefined): string | null {
+  if (!prefix || !name.startsWith(prefix)) return null;
+  const rest = name.slice(prefix.length).trim();
+  return rest || null;
+}
+
+function deriveCxBladeParts(
+  code: string,
+  en: string,
+  zh: string,
+  zhHant: string,
+  cx: boolean
+): {
+  mainBlade: string | null;
+  mainBladeZh: string | null;
+  mainBladeZhHant: string | null;
+  lockChip: string | null;
+} {
+  if (!cx) return { mainBlade: null, mainBladeZh: null, mainBladeZhHant: null, lockChip: null };
+  const override = CX_NAME_OVERRIDES[code];
+  if (override) {
+    const lockChipNames = LOCK_CHIP_NAMES[override.lockChip];
+    return {
+      ...override,
+      mainBladeZh: stripLockChipPrefix(zh, lockChipNames?.zh),
+      mainBladeZhHant: stripLockChipPrefix(zhHant, lockChipNames?.zhHant),
+    };
+  }
+
+  const [lockChip, ...mainBlade] = en.split(/\s+/).filter(Boolean);
+  const lockChipNames = LOCK_CHIP_NAMES[lockChip];
+  return {
+    lockChip: lockChip || null,
+    mainBlade: mainBlade.length > 0 ? mainBlade.join(" ") : null,
+    mainBladeZh: stripLockChipPrefix(zh, lockChipNames?.zh),
+    mainBladeZhHant: stripLockChipPrefix(zhHant, lockChipNames?.zhHant),
+  };
+}
+
 function buildBlades(): Blade[] {
   const bladeOverrides = overrides.blades as unknown as Record<string, BladeOverride>;
   const usedIds = new Set<string>();
@@ -138,12 +225,19 @@ function buildBlades(): Blade[] {
     usedIds.add(id);
 
     const type = (raw.type as PartType) in TYPE_BASE ? (raw.type as PartType) : "unknown";
+    const cx = Boolean(raw.stockAssist);
+    const cxParts = deriveCxBladeParts(raw.sheetId, en, raw.zhHans, raw.zhHant, cx);
+
     blades.push({
       id,
       code: raw.sheetId,
       canonical,
       en,
       enFull: variant ? `${en} (${variant})` : en,
+      mainBlade: cxParts.mainBlade,
+      mainBladeZh: cxParts.mainBladeZh,
+      mainBladeZhHant: cxParts.mainBladeZhHant,
+      lockChip: cxParts.lockChip,
       zh: raw.zhHans,
       zhHant: raw.zhHant,
       variant,
@@ -152,7 +246,7 @@ function buildBlades(): Blade[] {
       buy: raw.buy,
       line: ov?.line ?? deriveLine(raw.sheetId),
       spin: ov?.spin === "L" ? "L" : "R",
-      cx: ov?.cx ?? raw.sheetId.startsWith("CX"),
+      cx,
       collab: ov?.collab ?? false,
       review: ov?.review ?? false,
       image: raw.image,
@@ -202,20 +296,41 @@ function buildAssists(): Assist[] {
   return out.sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function buildLockChips(): LockChip[] {
+  const byId = new Map<string, LockChip>();
+  for (const b of blades) {
+    if (!b.cx || !b.lockChip) continue;
+    if (byId.has(b.lockChip)) continue;
+    const names = LOCK_CHIP_NAMES[b.lockChip];
+    byId.set(b.lockChip, {
+      id: b.lockChip,
+      name: `${b.lockChip} Lock Chip`,
+      zh: names?.zh ?? b.lockChip,
+      zhHant: names?.zhHant ?? b.lockChip,
+      hasMetal: METAL_LOCK_CHIPS.has(b.lockChip),
+      image: null,
+    });
+  }
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export const blades: Blade[] = buildBlades();
 export const ratchets: Ratchet[] = buildRatchets();
 export const bits: Bit[] = buildBits();
 export const assists: Assist[] = buildAssists();
+export const lockChips: LockChip[] = buildLockChips();
 
 const bladeById = new Map(blades.map((b) => [b.id, b]));
 const ratchetById = new Map(ratchets.map((r) => [r.id, r]));
 const bitById = new Map(bits.map((b) => [b.id, b]));
 const assistById = new Map(assists.map((a) => [a.id, a]));
+const lockChipById = new Map(lockChips.map((l) => [l.id, l]));
 
 export const findBlade = (id: string) => bladeById.get(id) ?? null;
 export const findRatchet = (id: string) => ratchetById.get(id) ?? null;
 export const findBit = (id: string) => bitById.get(id) ?? null;
 export const findAssist = (id: string) => assistById.get(id) ?? null;
+export const findLockChip = (id: string) => lockChipById.get(id) ?? null;
 
 /** One entry per canonical part (best tier, prefers an entry with image and no variant). */
 export function canonicalBlades(): Blade[] {
@@ -246,4 +361,5 @@ export const stats = {
   ratchets: ratchets.length,
   bits: bits.length,
   assists: assists.length,
+  lockChips: lockChips.length,
 };

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDict, isLocale, Locale, locales } from "@/i18n";
-import { blades, canonicalBlades, ratchets, bits, assists, tierRank } from "@/data/parts";
+import { blades, canonicalBlades, ratchets, bits, assists, lockChips, tierRank } from "@/data/parts";
 import { BladeCard } from "@/components/PartCard";
 
 export function generateStaticParams() {
@@ -25,6 +25,7 @@ export default async function HomePage({
 
   const stats = [
     { n: blades.length, label: dict.home.statBlades },
+    { n: lockChips.length, label: dict.home.statLockChips },
     { n: ratchets.length, label: dict.home.statRatchets },
     { n: bits.length, label: dict.home.statBits },
     { n: assists.length, label: dict.home.statAssists },
@@ -69,7 +70,7 @@ export default async function HomePage({
             </Link>
           </div>
 
-          <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-6 grid w-full max-w-4xl grid-cols-2 gap-3 sm:grid-cols-5">
             {stats.map((s) => (
               <div key={s.label} className="panel px-4 py-3">
                 <div className="font-display text-2xl font-bold text-accent">{s.n}</div>

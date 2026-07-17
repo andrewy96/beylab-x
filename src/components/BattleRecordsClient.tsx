@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Dict, Locale } from "@/i18n";
+import { useAuth } from "@/lib/auth";
 import { Match, Round, supabase } from "@/lib/supabase";
+import { profileDisplayName } from "@/lib/profileName";
+import { matchToShareData } from "@/lib/shareCard";
+import ShareMatchModal from "./ShareMatchModal";
 
 const MATCH_SELECT =
   "*, p1_profile:profiles!matches_p1_fkey(*), p2_profile:profiles!matches_p2_fkey(*)";
@@ -24,6 +28,8 @@ function fmtDate(iso: string, locale: Locale) {
 }
 
 function RecordRow({ m, locale, dict }: { m: Match; locale: Locale; dict: Dict }) {
+  const { profile } = useAuth();
+  const [shareOpen, setShareOpen] = useState(false);
   const p1Won = m.winner === m.p1;
   const rounds = (m.rounds ?? []) as Round[];
   const format = m.format ?? "single";
@@ -31,7 +37,7 @@ function RecordRow({ m, locale, dict }: { m: Match; locale: Locale; dict: Dict }
   const targetScore = m.target_score ?? 4;
   const formatLabel =
     format === "team"
-      ? dict.battle.teamFormat.replace("{count}", String(teamSize))
+      ? dict.battle.teamFormat.replace(/\{count\}/g, String(teamSize))
       : dict.battle.singleBattle;
   const moved = m.stars_moved ?? m.wager;
 
@@ -42,7 +48,7 @@ function RecordRow({ m, locale, dict }: { m: Match; locale: Locale; dict: Dict }
           href={`/${locale}/players/${m.p1_profile?.handle ?? ""}`}
           className={`font-semibold hover:text-accent ${p1Won ? "text-accent" : "text-ink"}`}
         >
-          @{m.p1_profile?.handle ?? "?"}
+          {profileDisplayName(m.p1_profile)}
         </Link>
         <span className="font-display text-lg font-black">
           {m.p1_score}:{m.p2_score}
@@ -51,9 +57,32 @@ function RecordRow({ m, locale, dict }: { m: Match; locale: Locale; dict: Dict }
           href={`/${locale}/players/${m.p2_profile?.handle ?? ""}`}
           className={`font-semibold hover:text-accent ${!p1Won ? "text-accent" : "text-ink"}`}
         >
-          @{m.p2_profile?.handle ?? "?"}
+          {profileDisplayName(m.p2_profile)}
         </Link>
-        <span className="ml-auto text-xs text-ink-dim">{fmtDate(m.created_at, locale)}</span>
+        <span className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-ink-dim">{fmtDate(m.created_at, locale)}</span>
+          <button
+            onClick={() => setShareOpen(true)}
+            aria-label={dict.battle.share}
+            title={dict.battle.share}
+            className="text-ink-dim transition hover:text-accent"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+              <path d="M16 6l-4-4-4 4" />
+              <path d="M12 2v13" />
+            </svg>
+          </button>
+        </span>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -73,8 +102,8 @@ function RecordRow({ m, locale, dict }: { m: Match; locale: Locale; dict: Dict }
           {rounds.map((r, i) => {
             const name =
               r.side === 1
-                ? m.p1_profile?.handle ?? dict.battle.player1
-                : m.p2_profile?.handle ?? dict.battle.player2;
+                ? profileDisplayName(m.p1_profile, dict.battle.player1)
+                : profileDisplayName(m.p2_profile, dict.battle.player2);
             return (
               <span
                 key={i}
@@ -84,11 +113,20 @@ function RecordRow({ m, locale, dict }: { m: Match; locale: Locale; dict: Dict }
                   background: `color-mix(in srgb, ${FINISH_COLOR[r.finish]} 12%, transparent)`,
                 }}
               >
-                @{name} +{r.pts}
+                {name} +{r.pts}
               </span>
             );
           })}
         </div>
+      )}
+
+      {shareOpen && (
+        <ShareMatchModal
+          data={matchToShareData(m, profile?.id ?? null, locale, dict)}
+          fileId={m.id}
+          dict={dict}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </article>
   );

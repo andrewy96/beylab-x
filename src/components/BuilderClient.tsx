@@ -8,10 +8,12 @@ import {
   ratchets,
   bits,
   assists,
+  lockChips,
   findBlade,
   findRatchet,
   findBit,
   findAssist,
+  findLockChip,
   tierRank,
 } from "@/data/parts";
 import { Combo, comboName, comboStats, comboType, comboToParams, isComplete } from "@/lib/combo";
@@ -19,7 +21,7 @@ import { TypeBadge, TierChip, TYPE_COLOR } from "./badges";
 import Radar from "./Radar";
 import PartImage from "./PartImage";
 
-type SlotKey = "blade" | "assist" | "ratchet" | "bit";
+type SlotKey = "blade" | "lockChip" | "assist" | "ratchet" | "bit";
 
 interface PickerItem {
   id: string;
@@ -120,6 +122,7 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
   const searchParams = useSearchParams();
 
   const [bladeId, setBladeId] = useState<string | null>(searchParams.get("b"));
+  const [lockChipId, setLockChipId] = useState<string | null>(searchParams.get("l"));
   const [ratchetId, setRatchetId] = useState<string | null>(searchParams.get("r"));
   const [bitId, setBitId] = useState<string | null>(searchParams.get("t"));
   const [assistId, setAssistId] = useState<string | null>(searchParams.get("a"));
@@ -128,13 +131,19 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
 
   const combo: Combo = useMemo(() => {
     const blade = bladeId ? findBlade(bladeId) : null;
+    const defaultLockChip = blade?.lockChip ? findLockChip(blade.lockChip) : null;
     return {
       blade,
+      lockChip: blade?.cx
+        ? lockChipId
+          ? findLockChip(lockChipId) ?? defaultLockChip
+          : defaultLockChip
+        : null,
       ratchet: ratchetId ? findRatchet(ratchetId) : null,
       bit: bitId ? findBit(bitId) : null,
       assist: blade?.cx && assistId ? findAssist(assistId) : null,
     };
-  }, [bladeId, ratchetId, bitId, assistId]);
+  }, [bladeId, lockChipId, ratchetId, bitId, assistId]);
 
   // Keep the URL in sync so the address bar is always the share link.
   useEffect(() => {
@@ -175,6 +184,9 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     const pool = blades.filter((b) => b.image);
     const blade = pool[Math.floor(Math.random() * pool.length)];
     setBladeId(blade.id);
+    setLockChipId(
+      blade.cx ? lockChips[Math.floor(Math.random() * lockChips.length)].id : null
+    );
     setRatchetId(ratchets[Math.floor(Math.random() * ratchets.length)].id);
     setBitId(bits[Math.floor(Math.random() * bits.length)].id);
     setAssistId(
@@ -184,6 +196,7 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
 
   const reset = () => {
     setBladeId(null);
+    setLockChipId(null);
     setRatchetId(null);
     setBitId(null);
     setAssistId(null);
@@ -207,13 +220,20 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
         image: r.image,
       })),
       bit: bits.map((b) => ({ id: b.id, title: b.id, subtitle: b.name, image: b.image })),
+      lockChip: lockChips.map((l) => ({
+        id: l.id,
+        title: locale === "zh" ? l.zh : l.id,
+        subtitle: l.hasMetal ? dict.part.metalLockChip : locale === "zh" ? dict.part.lockChip : l.name,
+        image: l.image,
+      })),
       assist: assists.map((a) => ({ id: a.id, title: a.id, subtitle: a.name, image: a.image })),
     }),
-    [locale]
+    [dict.part.lockChip, dict.part.metalLockChip, locale]
   );
 
   const setters: Record<SlotKey, (id: string | null) => void> = {
     blade: setBladeId,
+    lockChip: setLockChipId,
     ratchet: setRatchetId,
     bit: setBitId,
     assist: setAssistId,
@@ -231,6 +251,17 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
       label: dict.builder.slotBlade,
       value: combo.blade ? (locale === "zh" ? combo.blade.zh : combo.blade.enFull) : null,
       image: combo.blade?.image ?? null,
+    },
+    {
+      key: "lockChip",
+      label: dict.builder.slotLockChip,
+      value: combo.lockChip
+        ? `${locale === "zh" ? combo.lockChip.zh : combo.lockChip.id}${
+            combo.lockChip.hasMetal ? ` · ${dict.part.metalLockChip}` : ""
+          }`
+        : null,
+      image: combo.lockChip?.image ?? null,
+      hidden: !combo.blade?.cx,
     },
     {
       key: "assist",
@@ -255,6 +286,7 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
 
   const slotLabels: Record<SlotKey, string> = {
     blade: dict.builder.slotBlade,
+    lockChip: dict.builder.slotLockChip,
     assist: dict.builder.slotAssist,
     ratchet: dict.builder.slotRatchet,
     bit: dict.builder.slotBit,
@@ -288,6 +320,17 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
               </div>
             )}
           </div>
+          {combo.blade?.cx && (
+            <div className="-mt-2 h-12 w-full max-w-28 opacity-95">
+              <PartImage
+                src={combo.lockChip?.image ?? null}
+                alt="lock chip"
+                fallbackLabel={
+                  combo.lockChip ? (locale === "zh" ? combo.lockChip.zh : combo.lockChip.id) : "LC"
+                }
+              />
+            </div>
+          )}
           {combo.blade?.cx && combo.assist?.image && (
             <div className="-mt-3 h-16 w-full max-w-40 opacity-95">
               <PartImage src={combo.assist.image} alt="assist" fallbackLabel={combo.assist.id} />
@@ -343,7 +386,7 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
             ))}
         </div>
 
-        {combo.blade?.cx && !combo.assist && (
+        {combo.blade?.cx && (!combo.lockChip || !combo.assist) && (
           <p className="text-xs text-accent-2">◆ {dict.builder.cxNote}</p>
         )}
 

@@ -63,7 +63,7 @@ export function SimplePartCard({
   locale,
   badge,
 }: {
-  category: "ratchet" | "bit" | "assist";
+  category: "ratchet" | "bit" | "assist" | "lock-chip";
   id: string;
   title: string;
   subtitle: string | null;
@@ -82,7 +82,7 @@ export function SimplePartCard({
             {badge}
           </span>
         )}
-        <PartImage src={image} alt={title} fallbackLabel={id} className="transition group-hover:scale-105" />
+        <PartImage src={image} alt={title} fallbackLabel={title} className="transition group-hover:scale-105" />
       </div>
       <div className="p-3">
         <div className="font-display text-sm font-bold">{title}</div>

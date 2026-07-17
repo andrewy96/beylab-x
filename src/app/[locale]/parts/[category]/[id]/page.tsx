@@ -7,10 +7,12 @@ import {
   ratchets,
   bits,
   assists,
+  lockChips,
   findBlade,
   findRatchet,
   findBit,
   findAssist,
+  findLockChip,
   bladeVariants,
   Blade,
 } from "@/data/parts";
@@ -19,13 +21,14 @@ import StatBars from "@/components/StatBars";
 import PartImage from "@/components/PartImage";
 import { BladeCard } from "@/components/PartCard";
 
-const CATEGORIES = ["blade", "ratchet", "bit", "assist"] as const;
+const CATEGORIES = ["blade", "lock-chip", "ratchet", "bit", "assist"] as const;
 type Category = (typeof CATEGORIES)[number];
 
 export function generateStaticParams() {
   const params: { locale: string; category: string; id: string }[] = [];
   for (const locale of locales) {
     for (const b of blades) params.push({ locale, category: "blade", id: b.id });
+    for (const l of lockChips) params.push({ locale, category: "lock-chip", id: l.id });
     for (const r of ratchets) params.push({ locale, category: "ratchet", id: r.id });
     for (const b of bits) params.push({ locale, category: "bit", id: b.id });
     for (const a of assists) params.push({ locale, category: "assist", id: a.id });
@@ -86,7 +89,10 @@ function BladeDetail({ blade, locale, dict }: { blade: Blade; locale: Locale; di
   const name = locale === "zh" ? blade.zh : blade.enFull;
   const altName = locale === "zh" ? blade.enFull : blade.zh;
   const variants = bladeVariants(blade.canonical).filter((v) => v.id !== blade.id);
+  const stockLockChip = blade.lockChip ? findLockChip(blade.lockChip) : null;
   const builderHref = `/${locale}/builder?b=${encodeURIComponent(blade.id)}${
+    blade.cx && blade.lockChip ? `&l=${encodeURIComponent(blade.lockChip)}` : ""
+  }${
     blade.stockRatchet ? `&r=${encodeURIComponent(blade.stockRatchet)}` : ""
   }${blade.stockBit ? `&t=${encodeURIComponent(blade.stockBit)}` : ""}${
     blade.cx && blade.stockAssist ? `&a=${encodeURIComponent(blade.stockAssist)}` : ""
@@ -143,6 +149,11 @@ function BladeDetail({ blade, locale, dict }: { blade: Blade; locale: Locale; di
             {(blade.stockRatchet || blade.stockBit) && (
               <InfoRow label={dict.part.stockCombo}>
                 <span className="flex flex-wrap justify-end gap-1.5">
+                  {blade.lockChip && blade.cx && (
+                    <Link href={`/${locale}/parts/lock-chip/${encodeURIComponent(blade.lockChip)}`} className="rounded bg-panel-2 px-2 py-0.5 font-display text-xs text-accent-2 hover:text-accent">
+                      {locale === "zh" ? stockLockChip?.zh ?? blade.lockChip : blade.lockChip}
+                    </Link>
+                  )}
                   {blade.stockAssist && blade.cx && (
                     <Link href={`/${locale}/parts/assist/${encodeURIComponent(blade.stockAssist)}`} className="rounded bg-panel-2 px-2 py-0.5 font-display text-xs text-accent-2 hover:text-accent">
                       {blade.stockAssist}
@@ -213,13 +224,31 @@ function SimpleDetail({
   dict: Dict;
 }) {
   const part =
-    category === "ratchet" ? findRatchet(id) : category === "bit" ? findBit(id) : findAssist(id);
+    category === "ratchet"
+      ? findRatchet(id)
+      : category === "bit"
+        ? findBit(id)
+        : category === "lock-chip"
+          ? findLockChip(id)
+          : findAssist(id);
   if (!part) notFound();
 
-  const title = part.id;
-  const catLabel = dict.part[category];
-  const builderParam = category === "ratchet" ? "r" : category === "bit" ? "t" : "a";
+  const title =
+    category === "lock-chip" && locale === "zh"
+      ? (part as unknown as { zh: string }).zh
+      : part.id;
+  const catLabel =
+    category === "ratchet"
+      ? dict.part.ratchet
+      : category === "bit"
+        ? dict.part.bit
+        : category === "lock-chip"
+          ? dict.part.lockChip
+          : dict.part.assist;
+  const builderParam =
+    category === "ratchet" ? "r" : category === "bit" ? "t" : category === "lock-chip" ? "l" : "a";
   const name = "name" in part ? part.name : null;
+  const isMetalLockChip = category === "lock-chip" && "hasMetal" in part && part.hasMetal === true;
 
   const usedBy = blades
     .filter((b) =>
@@ -227,7 +256,9 @@ function SimpleDetail({
         ? b.stockRatchet === id
         : category === "bit"
           ? b.stockBit === id
-          : b.stockAssist === id
+          : category === "lock-chip"
+            ? b.lockChip === id
+            : b.stockAssist === id
     )
     .slice(0, 8);
 
@@ -261,6 +292,10 @@ function SimpleDetail({
               </>
             )}
             {name && <InfoRow label={dict.part.fullName}>{name}</InfoRow>}
+            {isMetalLockChip && (
+              <InfoRow label={dict.part.metalLockChip}>âœ“</InfoRow>
+            )}
+            {category === "lock-chip" && <InfoRow label={dict.part.line}>{dict.lines.CX}</InfoRow>}
             {category === "assist" && <InfoRow label={dict.part.line}>{dict.lines.CX}</InfoRow>}
           </div>
 

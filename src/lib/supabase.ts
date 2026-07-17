@@ -13,6 +13,9 @@ export interface Profile {
   display_name: string;
   avatar_url: string | null;
   city: string | null;
+  gender: "male" | "female" | null;
+  birthday: string | null;
+  age: number | null;
   stars: number;
   wins: number;
   losses: number;
@@ -22,6 +25,7 @@ export interface Profile {
 export interface Challenge {
   id: string;
   host: string;
+  play_mode: "player" | "judge";
   city: string;
   venue: string | null;
   battle_at: string | null;
@@ -32,9 +36,13 @@ export interface Challenge {
   note: string | null;
   status: "open" | "accepted" | "completed" | "cancelled";
   opponent: string | null;
+  player1: string | null;
+  player2: string | null;
   created_at: string;
   host_profile?: Profile;
   opponent_profile?: Profile | null;
+  player1_profile?: Profile | null;
+  player2_profile?: Profile | null;
 }
 
 export type Finish = "spin" | "over" | "burst" | "xtreme";

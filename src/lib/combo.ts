@@ -3,26 +3,36 @@ import {
   Ratchet,
   Bit,
   Assist,
+  LockChip,
   Stats,
   findBlade,
   findRatchet,
   findBit,
   findAssist,
+  findLockChip,
 } from "@/data/parts";
 
 export interface Combo {
   blade: Blade | null;
+  lockChip: LockChip | null;
   ratchet: Ratchet | null;
   bit: Bit | null;
   assist: Assist | null;
 }
 
-export const EMPTY_COMBO: Combo = { blade: null, ratchet: null, bit: null, assist: null };
+export const EMPTY_COMBO: Combo = {
+  blade: null,
+  lockChip: null,
+  ratchet: null,
+  bit: null,
+  assist: null,
+};
 
 /** Serialize a combo into URL search params (shared links). */
 export function comboToParams(combo: Combo): URLSearchParams {
   const p = new URLSearchParams();
   if (combo.blade) p.set("b", combo.blade.id);
+  if (combo.lockChip && combo.blade?.cx) p.set("l", combo.lockChip.id);
   if (combo.ratchet) p.set("r", combo.ratchet.id);
   if (combo.bit) p.set("t", combo.bit.id);
   if (combo.assist && combo.blade?.cx) p.set("a", combo.assist.id);
@@ -31,8 +41,14 @@ export function comboToParams(combo: Combo): URLSearchParams {
 
 export function comboFromParams(params: URLSearchParams): Combo {
   const blade = params.get("b") ? findBlade(params.get("b")!) : null;
+  const defaultLockChip = blade?.lockChip ? findLockChip(blade.lockChip) : null;
   return {
     blade,
+    lockChip: blade?.cx
+      ? params.get("l")
+        ? findLockChip(params.get("l")!) ?? defaultLockChip
+        : defaultLockChip
+      : null,
     ratchet: params.get("r") ? findRatchet(params.get("r")!) : null,
     bit: params.get("t") ? findBit(params.get("t")!) : null,
     assist: blade?.cx && params.get("a") ? findAssist(params.get("a")!) : null,
@@ -42,14 +58,29 @@ export function comboFromParams(params: URLSearchParams): Combo {
 /** Official-style combo name, e.g. "Phoenix Wing 9-60GF" or "Dran Brave S3-60F". */
 export function comboName(combo: Combo, locale: "en" | "zh" = "en"): string {
   if (!combo.blade) return "";
-  const bladeName = locale === "zh" ? combo.blade.zh : combo.blade.en;
+  const bladeName =
+    combo.blade.cx
+      ? locale === "zh"
+        ? [combo.lockChip?.zh, combo.blade.mainBladeZh].filter(Boolean).join("") ||
+          combo.blade.zh
+        : [combo.lockChip?.id ?? combo.blade.lockChip, combo.blade.mainBlade]
+            .filter(Boolean)
+            .join(" ") || combo.blade.en
+      : locale === "zh"
+        ? combo.blade.zh
+        : combo.blade.en;
   const assist = combo.blade.cx && combo.assist ? combo.assist.id : "";
   const tail = [assist + (combo.ratchet?.id ?? ""), combo.bit?.id ?? ""].join("");
   return tail ? `${bladeName} ${tail}` : bladeName;
 }
 
 export function isComplete(combo: Combo): boolean {
-  return !!(combo.blade && combo.ratchet && combo.bit && (!combo.blade.cx || combo.assist));
+  return !!(
+    combo.blade &&
+    combo.ratchet &&
+    combo.bit &&
+    (!combo.blade.cx || (combo.lockChip && combo.assist))
+  );
 }
 
 /** Keyword-based bit personality used for aggregate stats. */

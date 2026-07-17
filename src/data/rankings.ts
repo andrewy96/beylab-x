@@ -24,11 +24,16 @@ const byCode = new Map(blades.map((b) => [b.code, b]));
 
 export const rankings: RankedCombo[] = rankingsData.rankings.map((r) => {
   const blade = byCode.get(r.bladeCode) ?? null;
+  const cxQuery = blade?.cx
+    ? `${blade.lockChip ? `&l=${encodeURIComponent(blade.lockChip)}` : ""}${
+        blade.stockAssist ? `&a=${encodeURIComponent(blade.stockAssist)}` : ""
+      }`
+    : "";
   return {
     ...r,
     blade,
     builderQuery: blade
-      ? `b=${encodeURIComponent(blade.id)}&r=${encodeURIComponent(r.ratchet)}&t=${encodeURIComponent(r.bit)}`
+      ? `b=${encodeURIComponent(blade.id)}${cxQuery}&r=${encodeURIComponent(r.ratchet)}&t=${encodeURIComponent(r.bit)}`
       : null,
   };
 });

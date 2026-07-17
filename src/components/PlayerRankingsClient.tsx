@@ -1,0 +1,113 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Dict, Locale } from "@/i18n";
+import { Profile, supabase } from "@/lib/supabase";
+
+function winRate(profile: Profile) {
+  const total = profile.wins + profile.losses;
+  return total > 0 ? Math.round((profile.wins / total) * 100) : 0;
+}
+
+export default function PlayerRankingsClient({
+  locale,
+  dict,
+  limit = 10,
+}: {
+  locale: Locale;
+  dict: Dict;
+  limit?: number;
+}) {
+  const [players, setPlayers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("*")
+      .order("wins", { ascending: false })
+      .order("stars", { ascending: false })
+      .limit(limit)
+      .then(({ data }) => {
+        setPlayers((data as Profile[]) ?? []);
+        setLoading(false);
+      });
+  }, [limit]);
+
+  const ranked = useMemo(
+    () =>
+      [...players].sort(
+        (a, b) =>
+          b.wins - a.wins ||
+          b.stars - a.stars ||
+          winRate(b) - winRate(a) ||
+          a.handle.localeCompare(b.handle)
+      ),
+    [players]
+  );
+
+  return (
+    <section className="panel p-5">
+      <div className="mb-4">
+        <h2 className="font-display text-lg font-bold tracking-wide">
+          {dict.rankings.publicPlayers}
+        </h2>
+        <p className="mt-1 text-xs text-ink-dim">{dict.rankings.publicPlayersSub}</p>
+      </div>
+
+      {!supabase ? (
+        <p className="py-8 text-center text-sm text-ink-dim">{dict.auth.notConfigured}</p>
+      ) : loading ? (
+        <p className="py-8 text-center text-sm text-ink-dim">{dict.admin.loading}</p>
+      ) : ranked.length === 0 ? (
+        <p className="py-8 text-center text-sm text-ink-dim">{dict.admin.noUsers}</p>
+      ) : (
+        <div className="space-y-2">
+          {ranked.map((player, index) => (
+            <Link
+              key={player.id}
+              href={`/${locale}/players/${player.handle}`}
+              className="flex items-center gap-3 rounded-md border border-edge bg-bg/35 p-3 transition hover:border-accent/50"
+            >
+              <div className="w-7 text-center font-display text-sm font-bold text-ink-dim">
+                #{index + 1}
+              </div>
+              <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-accent/35 bg-panel font-display text-sm font-black text-accent">
+                {player.avatar_url ? (
+                  <img
+                    src={player.avatar_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  player.handle.slice(0, 1).toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {player.display_name || player.handle}
+                </div>
+                <div className="truncate text-[10px] text-ink-dim">
+                  @{player.handle}
+                  {player.city ? ` / ${player.city}` : ""}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-display text-sm font-bold text-accent">{player.wins}W</div>
+                <div className="text-[10px] text-ink-dim">
+                  {winRate(player)}% / <span className="text-bal">{player.stars}★</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
