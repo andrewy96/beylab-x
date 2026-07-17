@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Dict, Locale } from "@/i18n";
-import { Profile, supabase } from "@/lib/supabase";
+import { MY_CITIES, Profile, supabase } from "@/lib/supabase";
 
 function winRate(profile: Profile) {
   const total = profile.wins + profile.losses;
@@ -21,23 +21,26 @@ export default function PlayerRankingsClient({
 }) {
   const [players, setPlayers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [city, setCity] = useState("all");
 
   useEffect(() => {
     if (!supabase) {
       setLoading(false);
       return;
     }
-    supabase
+    setLoading(true);
+    let q = supabase
       .from("profiles")
       .select("*")
       .order("wins", { ascending: false })
       .order("stars", { ascending: false })
-      .limit(limit)
-      .then(({ data }) => {
-        setPlayers((data as Profile[]) ?? []);
-        setLoading(false);
-      });
-  }, [limit]);
+      .limit(limit);
+    if (city !== "all") q = q.eq("city", city);
+    q.then(({ data }) => {
+      setPlayers((data as Profile[]) ?? []);
+      setLoading(false);
+    });
+  }, [limit, city]);
 
   const ranked = useMemo(
     () =>
@@ -53,11 +56,28 @@ export default function PlayerRankingsClient({
 
   return (
     <section className="panel p-5">
-      <div className="mb-4">
-        <h2 className="font-display text-lg font-bold tracking-wide">
-          {dict.rankings.publicPlayers}
-        </h2>
-        <p className="mt-1 text-xs text-ink-dim">{dict.rankings.publicPlayersSub}</p>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="font-display text-lg font-bold tracking-wide">
+            {dict.rankings.publicPlayers}
+          </h2>
+          <p className="mt-1 text-xs text-ink-dim">{dict.rankings.publicPlayersSub}</p>
+        </div>
+        <select
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          className="rounded-md border border-edge bg-panel px-2.5 py-1.5 text-xs text-ink outline-none transition focus:border-accent"
+          aria-label={dict.battle.cityFilter}
+        >
+          <option value="all">
+            {dict.battle.cityFilter}: {dict.battle.all}
+          </option>
+          {MY_CITIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
 
       {!supabase ? (

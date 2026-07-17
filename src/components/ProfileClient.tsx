@@ -59,17 +59,30 @@ function StatCard({ label, value, accent }: { label: string; value: string | num
   );
 }
 
-export function ProfileHeader({ p, locale, dict }: { p: Profile; locale: Locale; dict: Dict }) {
+export function ProfileHeader({
+  p,
+  locale,
+  dict,
+  publicView = false,
+}: {
+  p: Profile;
+  locale: Locale;
+  dict: Dict;
+  /** Public player pages show only the handle and location — demographics stay private. */
+  publicView?: boolean;
+}) {
   const total = p.wins + p.losses;
   const rate = total > 0 ? Math.round((p.wins / total) * 100) : 0;
-  const details = [
-    `@${p.handle}`,
-    p.city,
-    genderLabel(p.gender, dict),
-    p.age != null ? `${dict.auth.age} ${p.age}` : null,
-    p.birthday ? `${dict.auth.birthday} ${fmtDate(p.birthday, locale)}` : null,
-    `${dict.battle.memberSince} ${fmtDate(p.created_at, locale)}`,
-  ].filter(Boolean);
+  const details = publicView
+    ? [`@${p.handle}`, p.city].filter(Boolean)
+    : [
+        `@${p.handle}`,
+        p.city,
+        genderLabel(p.gender, dict),
+        p.age != null ? `${dict.auth.age} ${p.age}` : null,
+        p.birthday ? `${dict.auth.birthday} ${fmtDate(p.birthday, locale)}` : null,
+        `${dict.battle.memberSince} ${fmtDate(p.created_at, locale)}`,
+      ].filter(Boolean);
 
   return (
     <div>
@@ -656,7 +669,7 @@ export function PlayerClient({
 
   return (
     <div className="space-y-8">
-      <ProfileHeader p={profile} locale={locale} dict={dict} />
+      <ProfileHeader p={profile} locale={locale} dict={dict} publicView />
       <section>
         <h2 className="mb-3 font-display text-lg font-bold tracking-wide">
           {dict.battle.records}
