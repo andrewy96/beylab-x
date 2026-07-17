@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dict, Locale } from "@/i18n";
 import { useAuth } from "@/lib/auth";
-import { supabase, Match, MY_CITIES, Profile, Round } from "@/lib/supabase";
+import { supabase, Match, MY_CITIES, Profile, ProfilePrivate, Round } from "@/lib/supabase";
 import { profileDisplayName } from "@/lib/profileName";
 
 const FINISH_COLOR: Record<string, string> = {
@@ -42,7 +42,7 @@ function ageFromBirthday(birthday: string | null): number | null {
   return age;
 }
 
-function genderLabel(gender: Profile["gender"], dict: Dict) {
+function genderLabel(gender: ProfilePrivate["gender"], dict: Dict) {
   if (gender === "male") return dict.auth.genderMale;
   if (gender === "female") return dict.auth.genderFemale;
   return null;
@@ -61,11 +61,14 @@ function StatCard({ label, value, accent }: { label: string; value: string | num
 
 export function ProfileHeader({
   p,
+  priv = null,
   locale,
   dict,
   publicView = false,
 }: {
   p: Profile;
+  /** Owner-only demographics; only the /me page can load and pass these. */
+  priv?: ProfilePrivate | null;
   locale: Locale;
   dict: Dict;
   /** Public player pages show only the handle and location — demographics stay private. */
@@ -78,9 +81,9 @@ export function ProfileHeader({
     : [
         `@${p.handle}`,
         p.city,
-        genderLabel(p.gender, dict),
-        p.age != null ? `${dict.auth.age} ${p.age}` : null,
-        p.birthday ? `${dict.auth.birthday} ${fmtDate(p.birthday, locale)}` : null,
+        priv ? genderLabel(priv.gender, dict) : null,
+        priv?.age != null ? `${dict.auth.age} ${priv.age}` : null,
+        priv?.birthday ? `${dict.auth.birthday} ${fmtDate(priv.birthday, locale)}` : null,
         `${dict.battle.memberSince} ${fmtDate(p.created_at, locale)}`,
       ].filter(Boolean);
 
@@ -214,17 +217,21 @@ function avatarExtension(file: File) {
 
 function AccountSettings({
   profile,
+  priv,
   dict,
   refreshProfile,
+  refreshPriv,
 }: {
   profile: Profile;
+  priv: ProfilePrivate | null;
   dict: Dict;
   refreshProfile: () => Promise<void>;
+  refreshPriv: () => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState(profile.display_name || "");
   const [city, setCity] = useState(profile.city ?? "");
-  const [gender, setGender] = useState<Profile["gender"] | "">(profile.gender ?? "");
-  const [birthday, setBirthday] = useState(profile.birthday ?? "");
+  const [gender, setGender] = useState<ProfilePrivate["gender"] | "">(priv?.gender ?? "");
+  const [birthday, setBirthday] = useState(priv?.birthday ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
@@ -236,9 +243,9 @@ function AccountSettings({
   useEffect(() => {
     setDisplayName(profile.display_name || "");
     setCity(profile.city ?? "");
-    setGender(profile.gender ?? "");
-    setBirthday(profile.birthday ?? "");
-  }, [profile.birthday, profile.city, profile.display_name, profile.gender]);
+    setGender(priv?.gender ?? "");
+    setBirthday(priv?.birthday ?? "");
+  }, [priv, profile.city, profile.display_name]);
 
   const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!supabase) return;
@@ -306,18 +313,21 @@ function AccountSettings({
       .update({
         display_name: displayName.trim(),
         city: city || null,
-        gender: gender || null,
-        birthday: birthday || null,
-        age: nextAge,
       })
       .eq("id", profile.id);
+    const { error: privError } = await supabase.from("profile_private").upsert({
+      id: profile.id,
+      gender: gender || null,
+      birthday: birthday || null,
+      age: nextAge,
+    });
 
     setProfileBusy(false);
-    if (updateError) {
+    if (updateError || privError) {
       setError(dict.profile.updateFailed);
       return;
     }
-    await refreshProfile();
+    await Promise.all([refreshProfile(), refreshPriv()]);
     setMessage(dict.profile.updated);
   };
 
@@ -416,7 +426,7 @@ function AccountSettings({
               <label className={labelCls}>{dict.auth.gender}</label>
               <select
                 value={gender ?? ""}
-                onChange={(e) => setGender(e.target.value as Profile["gender"] | "")}
+                onChange={(e) => setGender(e.target.value as ProfilePrivate["gender"] | "")}
                 className={inputCls}
               >
                 <option value="">-</option>
@@ -511,7 +521,26 @@ export function MeClient({ locale, dict }: { locale: Locale; dict: Dict }) {
   const { enabled, loading, profile, refreshProfile, signOut } = useAuth();
   const [pending, setPending] = useState<Match[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [priv, setPriv] = useState<ProfilePrivate | null>(null);
   const [busy, setBusy] = useState(false);
+  const profileId = profile?.id ?? null;
+
+  const loadPriv = useCallback(async () => {
+    if (!supabase || !profileId) {
+      setPriv(null);
+      return;
+    }
+    const { data } = await supabase
+      .from("profile_private")
+      .select("*")
+      .eq("id", profileId)
+      .maybeSingle();
+    setPriv((data as ProfilePrivate | null) ?? null);
+  }, [profileId]);
+
+  useEffect(() => {
+    loadPriv();
+  }, [loadPriv]);
 
   const load = useCallback(async () => {
     if (!supabase || !profile) return;
@@ -555,8 +584,14 @@ export function MeClient({ locale, dict }: { locale: Locale; dict: Dict }) {
 
   return (
     <div className="space-y-8">
-      <ProfileHeader p={profile} locale={locale} dict={dict} />
-      <AccountSettings profile={profile} dict={dict} refreshProfile={refreshProfile} />
+      <ProfileHeader p={profile} priv={priv} locale={locale} dict={dict} />
+      <AccountSettings
+        profile={profile}
+        priv={priv}
+        dict={dict}
+        refreshProfile={refreshProfile}
+        refreshPriv={loadPriv}
+      />
 
       {pending.length > 0 && (
         <section>

@@ -13,13 +13,18 @@ export interface Profile {
   display_name: string;
   avatar_url: string | null;
   city: string | null;
-  gender: "male" | "female" | null;
-  birthday: string | null;
-  age: number | null;
   stars: number;
   wins: number;
   losses: number;
   created_at: string;
+}
+
+/** Demographics live in profile_private — RLS lets only the owner read/write them. */
+export interface ProfilePrivate {
+  id: string;
+  gender: "male" | "female" | null;
+  birthday: string | null;
+  age: number | null;
 }
 
 export interface Challenge {

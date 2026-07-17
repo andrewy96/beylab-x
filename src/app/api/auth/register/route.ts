@@ -84,9 +84,8 @@ export async function POST(request: Request) {
   }
 
   const { error: profileError } = await admin
-    .from("profiles")
-    .update({ gender, birthday, age })
-    .eq("id", data.user.id);
+    .from("profile_private")
+    .upsert({ id: data.user.id, gender, birthday, age });
 
   if (profileError) {
     await admin.auth.admin.deleteUser(data.user.id);
