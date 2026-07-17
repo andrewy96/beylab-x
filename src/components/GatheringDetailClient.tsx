@@ -30,6 +30,27 @@ function moneyLabel(g: Gathering, dict: Dict) {
   return `RM ${Number(g.fee_amount ?? 0).toFixed(2)}`;
 }
 
+function MemberName({
+  member,
+  locale,
+}: {
+  member: NonNullable<Gathering["members"]>[number];
+  locale: Locale;
+}) {
+  const label = profileDisplayName(member.profile);
+  if (!member.profile?.handle) {
+    return <span>{label}</span>;
+  }
+  return (
+    <Link
+      href={`/${locale}/players/${member.profile.handle}`}
+      className="font-semibold text-ink hover:text-accent"
+    >
+      {label}
+    </Link>
+  );
+}
+
 export default function GatheringDetailClient({
   id,
   locale,
@@ -99,8 +120,12 @@ export default function GatheringDetailClient({
   if (!item) return <p className="py-16 text-center text-sm text-ink-dim">{dict.gatherings.notFound}</p>;
 
   const members = item.members ?? [];
-  const joined = members.filter((m) => m.status === "joined");
-  const waitlisted = members.filter((m) => m.status === "waitlisted");
+  const joined = members
+    .filter((m) => m.status === "joined")
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const waitlisted = members
+    .filter((m) => m.status === "waitlisted")
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
   const mine = profile ? members.find((m) => m.user_id === profile.id) : null;
   const isHost = profile?.id === item.host;
 
@@ -241,51 +266,96 @@ export default function GatheringDetailClient({
           </div>
         </form>
       ) : (
-        <div className="panel p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="font-display text-2xl font-bold tracking-wide">{item.title}</h1>
-              <p className="mt-1 text-sm text-ink-dim">
-                {item.city} · {item.venue} · {fmtWhen(item.gather_at, locale)}
-              </p>
-              <p className="mt-1 text-xs text-ink-dim">
-                {dict.gatherings.hostedBy}: {profileDisplayName(item.host_profile)}
-              </p>
+        <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+          <div className="panel p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="font-display text-2xl font-bold tracking-wide">{item.title}</h1>
+                <p className="mt-1 text-sm text-ink-dim">
+                  {item.city} · {item.venue} · {fmtWhen(item.gather_at, locale)}
+                </p>
+                <p className="mt-1 text-xs text-ink-dim">
+                  {dict.gatherings.hostedBy}: {profileDisplayName(item.host_profile)}
+                </p>
+              </div>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">{moneyLabel(item, dict)}</span>
             </div>
-            <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">{moneyLabel(item, dict)}</span>
-          </div>
-          {item.note && <p className="mt-4 text-sm leading-relaxed text-ink-dim">{item.note}</p>}
-          <div className="mt-4 flex flex-wrap gap-1.5 text-[10px] font-semibold">
-            <span className="rounded bg-panel px-2 py-0.5 text-accent-2">
-              {dict.gatherings.joined}: {joined.length}{item.capacity ? `/${item.capacity}` : ""}
-            </span>
-            <span className="rounded bg-panel px-2 py-0.5 text-ink-dim">
-              {dict.gatherings.waitlisted}: {waitlisted.length}
-            </span>
-            {mine && (
-              <span className="rounded bg-accent/10 px-2 py-0.5 text-accent">
-                {mine.status === "joined" ? dict.gatherings.youJoined : dict.gatherings.youWaitlisted}
+            {item.note && <p className="mt-4 text-sm leading-relaxed text-ink-dim">{item.note}</p>}
+            <div className="mt-4 flex flex-wrap gap-1.5 text-[10px] font-semibold">
+              <span className="rounded bg-panel px-2 py-0.5 text-accent-2">
+                {dict.gatherings.joined}: {joined.length}{item.capacity ? `/${item.capacity}` : ""}
               </span>
-            )}
+              <span className="rounded bg-panel px-2 py-0.5 text-ink-dim">
+                {dict.gatherings.waitlisted}: {waitlisted.length}
+              </span>
+              {mine && (
+                <span className="rounded bg-accent/10 px-2 py-0.5 text-accent">
+                  {mine.status === "joined" ? dict.gatherings.youJoined : dict.gatherings.youWaitlisted}
+                </span>
+              )}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {!profile ? (
+                <Link href={`/${locale}/login`} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-accent">
+                  {dict.gatherings.loginToJoin}
+                </Link>
+              ) : mine ? (
+                <button onClick={leave} disabled={busy} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-ink-dim transition hover:text-ink disabled:opacity-50">
+                  {dict.gatherings.leave}
+                </button>
+              ) : isHost ? (
+                <button onClick={cancel} disabled={busy || item.status !== "open"} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-ink-dim transition hover:text-ink disabled:opacity-50">
+                  {dict.gatherings.cancel}
+                </button>
+              ) : item.status === "open" ? (
+                <button onClick={join} disabled={busy} className="clip-x bg-accent px-4 py-2 font-display text-xs font-bold tracking-wider text-bg transition hover:brightness-110 disabled:opacity-50">
+                  {dict.gatherings.join}
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {!profile ? (
-              <Link href={`/${locale}/login`} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-accent">
-                {dict.gatherings.loginToJoin}
-              </Link>
-            ) : mine ? (
-              <button onClick={leave} disabled={busy} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-ink-dim transition hover:text-ink disabled:opacity-50">
-                {dict.gatherings.leave}
-              </button>
-            ) : isHost ? (
-              <button onClick={cancel} disabled={busy || item.status !== "open"} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-ink-dim transition hover:text-ink disabled:opacity-50">
-                {dict.gatherings.cancel}
-              </button>
-            ) : item.status === "open" ? (
-              <button onClick={join} disabled={busy} className="clip-x bg-accent px-4 py-2 font-display text-xs font-bold tracking-wider text-bg transition hover:brightness-110 disabled:opacity-50">
-                {dict.gatherings.join}
-              </button>
-            ) : null}
+
+          <div className="panel p-5">
+            <div className="mb-3 font-display text-sm font-bold tracking-wider text-ink-dim">
+              {dict.gatherings.nameList}
+            </div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-accent-2">{dict.gatherings.joined}</span>
+              <span className="rounded bg-panel px-2 py-0.5 text-[10px] font-semibold text-accent-2">
+                {joined.length}{item.capacity ? `/${item.capacity}` : ""}
+              </span>
+            </div>
+            {joined.length === 0 ? (
+              <p className="text-xs text-ink-dim">{dict.gatherings.noParticipants}</p>
+            ) : (
+              <ol className="space-y-1 text-sm text-ink-dim">
+                {joined.map((member, index) => (
+                  <li key={member.user_id} className="rounded bg-panel px-2 py-1">
+                    #{index + 1} <MemberName member={member} locale={locale} />
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {waitlisted.length > 0 && (
+              <>
+                <div className="mb-2 mt-4 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-ink-dim">
+                    {dict.gatherings.waitlisted}
+                  </span>
+                  <span className="rounded bg-panel px-2 py-0.5 text-[10px] font-semibold text-ink-dim">
+                    {waitlisted.length}
+                  </span>
+                </div>
+                <ol className="space-y-1 text-sm text-ink-dim">
+                  {waitlisted.map((member, index) => (
+                    <li key={member.user_id} className="rounded bg-panel px-2 py-1">
+                      #{index + 1} <MemberName member={member} locale={locale} />
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
           </div>
         </div>
       )}
