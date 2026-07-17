@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Dict, Locale } from "@/i18n";
+import { useAuth } from "@/lib/auth";
 import {
   blades,
   ratchets,
@@ -17,11 +19,19 @@ import {
   tierRank,
 } from "@/data/parts";
 import { Combo, comboName, comboStats, comboType, comboToParams, isComplete } from "@/lib/combo";
+import {
+  StrategyPair,
+  StrategyQuota,
+  StrategyResult,
+  StrategySource,
+  strategyMatchupKeyJson,
+} from "@/lib/strategy";
 import { TypeBadge, TierChip, TYPE_COLOR } from "./badges";
 import Radar from "./Radar";
 import PartImage from "./PartImage";
 
 type SlotKey = "blade" | "lockChip" | "assist" | "ratchet" | "bit";
+type PickerTarget = "own" | "opponent";
 
 interface PickerItem {
   id: string;
@@ -29,6 +39,60 @@ interface PickerItem {
   subtitle: string | null;
   image: string | null;
   tier?: string | null;
+}
+
+interface StrategyResponse {
+  strategy?: StrategyResult;
+  strategies?: StrategyPair;
+  cached?: boolean;
+  source?: StrategySource;
+  quota?: StrategyQuota;
+  matchupHash?: string;
+  error?: string;
+}
+
+interface StrategySessionCache {
+  strategies: StrategyPair;
+  quota?: StrategyQuota;
+  source?: StrategySource;
+  cached?: boolean;
+}
+
+const strategySessionKey = (hash: string) => `beylab.strategy.${hash}`;
+
+async function sha256Hex(value: string): Promise<string | null> {
+  if (!window.crypto?.subtle) return null;
+  const bytes = new TextEncoder().encode(value);
+  const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function readStrategySession(hash: string): StrategySessionCache | null {
+  try {
+    const raw = window.sessionStorage.getItem(strategySessionKey(hash));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StrategySessionCache;
+    if (!parsed.strategies?.en || !parsed.strategies?.zh) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeStrategySession(hash: string, value: StrategySessionCache) {
+  try {
+    window.sessionStorage.setItem(strategySessionKey(hash), JSON.stringify(value));
+  } catch {
+    /* sessionStorage can be unavailable in private browsing */
+  }
+}
+
+function formatQuota(template: string, quota: StrategyQuota): string {
+  return template
+    .replace("{remaining}", String(quota.remaining))
+    .replace("{limit}", String(quota.limit));
 }
 
 function PickerModal({
@@ -120,14 +184,27 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { enabled, loading: authLoading, session } = useAuth();
 
-  const [bladeId, setBladeId] = useState<string | null>(searchParams.get("b"));
-  const [lockChipId, setLockChipId] = useState<string | null>(searchParams.get("l"));
-  const [ratchetId, setRatchetId] = useState<string | null>(searchParams.get("r"));
-  const [bitId, setBitId] = useState<string | null>(searchParams.get("t"));
-  const [assistId, setAssistId] = useState<string | null>(searchParams.get("a"));
-  const [openSlot, setOpenSlot] = useState<SlotKey | null>(null);
+  const [bladeId, setBladeId] = useState<string | null>(() => searchParams.get("b"));
+  const [lockChipId, setLockChipId] = useState<string | null>(() => searchParams.get("l"));
+  const [ratchetId, setRatchetId] = useState<string | null>(() => searchParams.get("r"));
+  const [bitId, setBitId] = useState<string | null>(() => searchParams.get("t"));
+  const [assistId, setAssistId] = useState<string | null>(() => searchParams.get("a"));
+  const [opponentBladeId, setOpponentBladeId] = useState<string | null>(() => searchParams.get("ob"));
+  const [opponentLockChipId, setOpponentLockChipId] = useState<string | null>(() => searchParams.get("ol"));
+  const [opponentRatchetId, setOpponentRatchetId] = useState<string | null>(() => searchParams.get("or"));
+  const [opponentBitId, setOpponentBitId] = useState<string | null>(() => searchParams.get("ot"));
+  const [opponentAssistId, setOpponentAssistId] = useState<string | null>(() => searchParams.get("oa"));
+  const [openSlot, setOpenSlot] = useState<{ target: PickerTarget; slot: SlotKey } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [strategies, setStrategies] = useState<StrategyPair | null>(null);
+  const [strategySource, setStrategySource] = useState<StrategySource | null>(null);
+  const [strategyCached, setStrategyCached] = useState(false);
+  const [strategyQuota, setStrategyQuota] = useState<StrategyQuota | null>(null);
+  const [matchupHash, setMatchupHash] = useState<string | null>(null);
+  const [strategyBusy, setStrategyBusy] = useState(false);
+  const [strategyError, setStrategyError] = useState<string | null>(null);
 
   const combo: Combo = useMemo(() => {
     const blade = bladeId ? findBlade(bladeId) : null;
@@ -145,11 +222,38 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     };
   }, [bladeId, lockChipId, ratchetId, bitId, assistId]);
 
-  // Keep the URL in sync so the address bar is always the share link.
+  const opponentCombo: Combo = useMemo(() => {
+    const blade = opponentBladeId ? findBlade(opponentBladeId) : null;
+    const defaultLockChip = blade?.lockChip ? findLockChip(blade.lockChip) : null;
+    return {
+      blade,
+      lockChip: blade?.cx
+        ? opponentLockChipId
+          ? findLockChip(opponentLockChipId) ?? defaultLockChip
+          : defaultLockChip
+        : null,
+      ratchet: opponentRatchetId ? findRatchet(opponentRatchetId) : null,
+      bit: opponentBitId ? findBit(opponentBitId) : null,
+      assist: blade?.cx && opponentAssistId ? findAssist(opponentAssistId) : null,
+    };
+  }, [opponentBladeId, opponentLockChipId, opponentRatchetId, opponentBitId, opponentAssistId]);
+
+  // Keep both builds in the URL so language switching preserves the matchup.
   useEffect(() => {
-    const params = comboToParams(combo).toString();
-    router.replace(params ? `${pathname}?${params}` : pathname, { scroll: false });
-  }, [combo, pathname, router]);
+    const params = comboToParams(combo);
+    if (opponentCombo.blade) params.set("ob", opponentCombo.blade.id);
+    if (opponentCombo.lockChip && opponentCombo.blade?.cx) {
+      params.set("ol", opponentCombo.lockChip.id);
+    }
+    if (opponentCombo.assist && opponentCombo.blade?.cx) {
+      params.set("oa", opponentCombo.assist.id);
+    }
+    if (opponentCombo.ratchet) params.set("or", opponentCombo.ratchet.id);
+    if (opponentCombo.bit) params.set("ot", opponentCombo.bit.id);
+
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [combo, opponentCombo, pathname, router]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -160,9 +264,28 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
   const type = comboType(combo);
   const name = comboName(combo, locale);
   const complete = isComplete(combo);
+  const opponentStats = comboStats(opponentCombo);
+  const opponentType = comboType(opponentCombo);
+  const opponentName = comboName(opponentCombo, locale);
+  const opponentComplete = isComplete(opponentCombo);
+  const strategyLocked = !enabled || authLoading || !session;
+  const strategy = strategies?.[locale] ?? null;
+  const matchupKeyJson = useMemo(
+    () => (complete && opponentComplete ? strategyMatchupKeyJson(combo, opponentCombo) : null),
+    [complete, combo, opponentComplete, opponentCombo]
+  );
+  const quotaText =
+    strategyQuota && !strategyLocked ? formatQuota(dict.builder.strategyQuota, strategyQuota) : null;
+  const strategyStatus =
+    strategySource === "fallback"
+      ? dict.builder.strategyFallback
+      : strategyCached || strategySource === "cache"
+        ? dict.builder.strategyCached
+        : null;
 
   const share = async () => {
-    const url = window.location.href;
+    const params = comboToParams(combo).toString();
+    const url = `${window.location.origin}${pathname}${params ? `?${params}` : ""}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: `${dict.site.name} — ${name}`, text: name, url });
@@ -180,6 +303,62 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     showToast(dict.builder.nameCopied);
   };
 
+  useEffect(() => {
+    if (!enabled || authLoading || !session) {
+      setStrategyQuota(null);
+      return;
+    }
+
+    let active = true;
+    fetch("/api/strategy/quota", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(async (res) => {
+        if (!active || !res.ok) return;
+        const data = (await res.json()) as { quota?: StrategyQuota };
+        if (data.quota) setStrategyQuota(data.quota);
+      })
+      .catch(() => {
+        /* quota display is non-blocking */
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authLoading, enabled, session]);
+
+  useEffect(() => {
+    if (!matchupKeyJson) {
+      setMatchupHash(null);
+      setStrategies(null);
+      setStrategySource(null);
+      setStrategyCached(false);
+      return;
+    }
+
+    let active = true;
+    sha256Hex(matchupKeyJson).then((hash) => {
+      if (!active || !hash) return;
+      setMatchupHash(hash);
+      const cached = readStrategySession(hash);
+      if (cached) {
+        setStrategies(cached.strategies);
+        setStrategySource(cached.source ?? "cache");
+        setStrategyCached(cached.cached ?? true);
+        if (cached.quota) setStrategyQuota(cached.quota);
+      } else {
+        setStrategies(null);
+        setStrategySource(null);
+        setStrategyCached(false);
+      }
+      setStrategyError(null);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [matchupKeyJson]);
+
   const randomize = () => {
     const pool = blades.filter((b) => b.image);
     const blade = pool[Math.floor(Math.random() * pool.length)];
@@ -192,6 +371,10 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     setAssistId(
       blade.cx ? assists[Math.floor(Math.random() * assists.length)].id : null
     );
+    setStrategies(null);
+    setStrategySource(null);
+    setStrategyCached(false);
+    setStrategyError(null);
   };
 
   const reset = () => {
@@ -200,6 +383,22 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     setRatchetId(null);
     setBitId(null);
     setAssistId(null);
+    setStrategies(null);
+    setStrategySource(null);
+    setStrategyCached(false);
+    setStrategyError(null);
+  };
+
+  const resetOpponent = () => {
+    setOpponentBladeId(null);
+    setOpponentLockChipId(null);
+    setOpponentRatchetId(null);
+    setOpponentBitId(null);
+    setOpponentAssistId(null);
+    setStrategies(null);
+    setStrategySource(null);
+    setStrategyCached(false);
+    setStrategyError(null);
   };
 
   const pickerItems: Record<SlotKey, PickerItem[]> = useMemo(
@@ -237,6 +436,13 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     ratchet: setRatchetId,
     bit: setBitId,
     assist: setAssistId,
+  };
+  const opponentSetters: Record<SlotKey, (id: string | null) => void> = {
+    blade: setOpponentBladeId,
+    lockChip: setOpponentLockChipId,
+    ratchet: setOpponentRatchetId,
+    bit: setOpponentBitId,
+    assist: setOpponentAssistId,
   };
 
   const slots: {
@@ -284,6 +490,59 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     },
   ];
 
+  const opponentSlots: {
+    key: SlotKey;
+    label: string;
+    value: string | null;
+    image: string | null;
+    hidden?: boolean;
+  }[] = [
+    {
+      key: "blade",
+      label: dict.builder.slotBlade,
+      value: opponentCombo.blade
+        ? locale === "zh"
+          ? opponentCombo.blade.zh
+          : opponentCombo.blade.enFull
+        : null,
+      image: opponentCombo.blade?.image ?? null,
+    },
+    {
+      key: "lockChip",
+      label: dict.builder.slotLockChip,
+      value: opponentCombo.lockChip
+        ? `${locale === "zh" ? opponentCombo.lockChip.zh : opponentCombo.lockChip.id}${
+            opponentCombo.lockChip.hasMetal ? ` · ${dict.part.metalLockChip}` : ""
+          }`
+        : null,
+      image: opponentCombo.lockChip?.image ?? null,
+      hidden: !opponentCombo.blade?.cx,
+    },
+    {
+      key: "assist",
+      label: dict.builder.slotAssist,
+      value: opponentCombo.assist
+        ? `${opponentCombo.assist.id}${opponentCombo.assist.name ? ` · ${opponentCombo.assist.name}` : ""}`
+        : null,
+      image: opponentCombo.assist?.image ?? null,
+      hidden: !opponentCombo.blade?.cx,
+    },
+    {
+      key: "ratchet",
+      label: dict.builder.slotRatchet,
+      value: opponentCombo.ratchet?.id ?? null,
+      image: opponentCombo.ratchet?.image ?? null,
+    },
+    {
+      key: "bit",
+      label: dict.builder.slotBit,
+      value: opponentCombo.bit
+        ? `${opponentCombo.bit.id}${opponentCombo.bit.name ? ` · ${opponentCombo.bit.name}` : ""}`
+        : null,
+      image: opponentCombo.bit?.image ?? null,
+    },
+  ];
+
   const slotLabels: Record<SlotKey, string> = {
     blade: dict.builder.slotBlade,
     lockChip: dict.builder.slotLockChip,
@@ -292,8 +551,111 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
     bit: dict.builder.slotBit,
   };
 
+  const analyzeStrategy = async () => {
+    if (!session) return;
+    if (!complete || !opponentComplete) {
+      setStrategyError(dict.builder.strategyIncomplete);
+      return;
+    }
+
+    if (matchupHash) {
+      const cached = readStrategySession(matchupHash);
+      if (cached) {
+        setStrategies(cached.strategies);
+        setStrategySource(cached.source ?? "cache");
+        setStrategyCached(cached.cached ?? true);
+        if (cached.quota) setStrategyQuota(cached.quota);
+        setStrategyError(null);
+        return;
+      }
+    }
+
+    setStrategyBusy(true);
+    setStrategyError(null);
+    setStrategies(null);
+    setStrategySource(null);
+    setStrategyCached(false);
+    const res = await fetch("/api/strategy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        locale,
+        own: {
+          bladeId: combo.blade?.id,
+          lockChipId: combo.lockChip?.id,
+          assistId: combo.assist?.id,
+          ratchetId: combo.ratchet?.id,
+          bitId: combo.bit?.id,
+        },
+        opponent: {
+          bladeId: opponentCombo.blade?.id,
+          lockChipId: opponentCombo.lockChip?.id,
+          assistId: opponentCombo.assist?.id,
+          ratchetId: opponentCombo.ratchet?.id,
+          bitId: opponentCombo.bit?.id,
+        },
+      }),
+    });
+    setStrategyBusy(false);
+    const data = (await res.json().catch(() => ({}))) as StrategyResponse;
+    if (data.quota) setStrategyQuota(data.quota);
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        setStrategyError(dict.builder.strategyLimitReached);
+      } else {
+        setStrategyError(
+          res.status === 400 ? dict.builder.strategyIncomplete : dict.builder.strategyError
+        );
+      }
+      return;
+    }
+
+    const nextStrategies =
+      data.strategies ?? (data.strategy ? { en: data.strategy, zh: data.strategy } : null);
+    if (!nextStrategies) {
+      setStrategyError(dict.builder.strategyError);
+      return;
+    }
+
+    setStrategies(nextStrategies);
+    setStrategySource(data.source ?? (data.cached ? "cache" : "ai"));
+    setStrategyCached(!!data.cached);
+
+    const nextHash = data.matchupHash ?? matchupHash;
+    if (nextHash) {
+      setMatchupHash(nextHash);
+      if (data.source !== "fallback") {
+        writeStrategySession(nextHash, {
+          strategies: nextStrategies,
+          quota: data.quota,
+          source: "cache",
+          cached: true,
+        });
+      }
+    }
+  };
+
+  const compareRows = [
+    { key: "attack", label: dict.part.statAttack },
+    { key: "defense", label: dict.part.statDefense },
+    { key: "stamina", label: dict.part.statStamina },
+    { key: "burst", label: dict.part.statBurst },
+  ] as const;
+
+  const strategySections: { title: string; items: string[] | undefined }[] = [
+    { title: dict.builder.openingPlan, items: strategy?.openingPlan },
+    { title: dict.builder.winConditions, items: strategy?.winConditions },
+    { title: dict.builder.risks, items: strategy?.risks },
+    { title: dict.builder.adjustments, items: strategy?.adjustments },
+  ];
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       {/* Left: slots + preview */}
       <div className="space-y-6">
         {/* Assembly preview */}
@@ -363,7 +725,7 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
             .map((s) => (
               <button
                 key={s.key}
-                onClick={() => setOpenSlot(s.key)}
+                onClick={() => setOpenSlot({ target: "own", slot: s.key })}
                 className={`panel flex items-center gap-3 p-3 text-left transition hover:border-accent/60 ${
                   s.value ? "" : "border-dashed"
                 }`}
@@ -445,19 +807,191 @@ export default function BuilderClient({ locale, dict }: { locale: Locale; dict: 
             <div className="mb-2 font-display text-[10px] uppercase tracking-widest text-ink-dim">
               {dict.builder.statsTitle}
             </div>
-            <Radar stats={stats} dict={dict} />
+          <Radar stats={stats} dict={dict} />
+        </div>
+      )}
+      </div>
+      </div>
+
+      <div className={`panel p-5 ${strategyLocked ? "opacity-50" : ""}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="font-display text-[10px] uppercase tracking-widest text-ink-dim">
+              {dict.builder.strategyTitle}
+            </div>
+            <h2 className="mt-1 font-display text-xl font-bold tracking-wide text-accent">
+              {dict.builder.opponentBuild}
+            </h2>
+            <p className="mt-1 text-sm text-ink-dim">{dict.builder.strategySubtitle}</p>
           </div>
-        )}
+          {strategyLocked && (
+            <Link
+              href={`/${locale}/login`}
+              className="clip-x border border-edge bg-panel px-4 py-2 font-display text-xs font-bold tracking-wider text-accent"
+            >
+              {dict.auth.login}
+            </Link>
+          )}
+        </div>
+
+        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {opponentSlots
+                .filter((s) => !s.hidden)
+                .map((s) => (
+                  <button
+                    key={s.key}
+                    disabled={strategyLocked}
+                    onClick={() => setOpenSlot({ target: "opponent", slot: s.key })}
+                    className={`panel flex items-center gap-3 p-3 text-left transition enabled:hover:border-accent/60 disabled:cursor-not-allowed ${
+                      s.value ? "" : "border-dashed"
+                    }`}
+                  >
+                    <div className="h-12 w-12 shrink-0">
+                      <PartImage src={s.image} alt={s.label} fallbackLabel="+" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-display text-[10px] uppercase tracking-widest text-ink-dim">
+                        {s.label}
+                      </div>
+                      <div className="truncate text-sm font-semibold">
+                        {s.value ?? dict.builder.emptySlot}
+                      </div>
+                    </div>
+                    <span className="ml-auto text-xs text-accent">
+                      {s.value ? dict.builder.change : dict.builder.pick}
+                    </span>
+                  </button>
+                ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={resetOpponent}
+                disabled={strategyLocked}
+                className="clip-x border border-edge bg-panel px-4 py-2 font-display text-xs font-bold tracking-wider text-ink-dim transition enabled:hover:text-ink disabled:cursor-not-allowed"
+              >
+                {dict.builder.reset}
+              </button>
+              {!strategyLocked && opponentName && (
+                <span className="self-center truncate text-sm text-ink-dim">{opponentName}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="mb-3 font-display text-[10px] uppercase tracking-widest text-ink-dim">
+                {dict.builder.statCompare}
+              </div>
+              <div className="space-y-2">
+                {compareRows.map((row) => {
+                  const ownValue = stats?.[row.key] ?? 0;
+                  const opponentValue = opponentStats?.[row.key] ?? 0;
+                  const total = Math.max(1, ownValue + opponentValue);
+                  return (
+                    <div key={row.key} className="grid grid-cols-[5.5rem_1fr_3rem] items-center gap-2 text-xs">
+                      <span className="text-ink-dim">{row.label}</span>
+                      <div className="grid h-2 grid-cols-2 overflow-hidden rounded-full bg-panel-2">
+                        <div
+                          className="bg-accent"
+                          style={{ width: `${Math.max(8, (ownValue / total) * 100)}%` }}
+                        />
+                        <div
+                          className="ml-auto bg-accent-2"
+                          style={{ width: `${Math.max(8, (opponentValue / total) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="font-display text-ink-dim">
+                        {ownValue}/{opponentValue}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={analyzeStrategy}
+                disabled={strategyLocked || strategyBusy || !complete || !opponentComplete}
+                className="clip-x bg-accent px-5 py-2.5 font-display text-xs font-bold tracking-wider text-bg transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {strategyBusy ? dict.builder.analyzing : dict.builder.analyze}
+              </button>
+              {type && <TypeBadge type={type} dict={dict} />}
+              {opponentType && <TypeBadge type={opponentType} dict={dict} />}
+              {quotaText && <span className="text-xs text-ink-dim">{quotaText}</span>}
+            </div>
+
+            {strategyLocked && (
+              <p className="text-sm text-ink-dim">{dict.builder.loginForStrategy}</p>
+            )}
+            {strategyStatus && <p className="text-sm text-ink-dim">{strategyStatus}</p>}
+            {strategyError && <p className="text-sm font-semibold text-atk">{strategyError}</p>}
+
+            {strategy && (
+              <div className="space-y-4 border-t border-edge pt-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-ink-dim">
+                      {dict.builder.matchupEdge}
+                    </div>
+                    <div className="font-display text-sm font-bold text-accent">
+                      {strategy.edge ?? "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-ink-dim">
+                      {dict.builder.confidence}
+                    </div>
+                    <div className="font-display text-sm font-bold text-accent-2">
+                      {strategy.confidence ?? "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-ink-dim">
+                      {dict.builder.prediction}
+                    </div>
+                    <div className="text-sm font-semibold">{strategy.prediction ?? "-"}</div>
+                  </div>
+                </div>
+                {strategy.summary && (
+                  <p className="text-sm leading-relaxed text-ink-dim">{strategy.summary}</p>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {strategySections.map((section) => (
+                    <div key={section.title}>
+                      <div className="mb-1 font-display text-xs font-bold tracking-wider">
+                        {section.title}
+                      </div>
+                      <ul className="space-y-1 text-sm text-ink-dim">
+                        {(section.items ?? []).map((item, i) => (
+                          <li key={`${section.title}-${i}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {openSlot && (
         <PickerModal
-          title={slotLabels[openSlot]}
-          items={pickerItems[openSlot]}
+          title={slotLabels[openSlot.slot]}
+          items={pickerItems[openSlot.slot]}
           dict={dict}
           onClose={() => setOpenSlot(null)}
           onPick={(id) => {
-            setters[openSlot](id);
+            const targetSetters = openSlot.target === "own" ? setters : opponentSetters;
+            targetSetters[openSlot.slot](id);
+            setStrategies(null);
+            setStrategySource(null);
+            setStrategyCached(false);
+            setStrategyError(null);
             setOpenSlot(null);
           }}
         />

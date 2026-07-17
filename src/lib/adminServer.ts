@@ -16,7 +16,7 @@ interface AdminAuthFail {
 
 export type AdminAuthResult = AdminAuthOk | AdminAuthFail;
 
-function getAdminClient(): SupabaseClient | null {
+export function getAdminClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceRoleKey) return null;
