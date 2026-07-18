@@ -20,7 +20,7 @@ import {
   strategyMatchupKeyJson,
 } from "@/lib/strategy";
 
-const DAILY_LIMIT = 3;
+const DAILY_LIMIT = 1;
 const CACHE_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface ComboPayload {

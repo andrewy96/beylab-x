@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/adminServer";
 import { StrategyQuota } from "@/lib/strategy";
 
-const DAILY_LIMIT = 3;
+const DAILY_LIMIT = 1;
 
 type JsonObject = Record<string, unknown>;
 
