@@ -10,7 +10,6 @@
     "builder": "组装工坊",
     "rankings": "排行榜",
     "tournaments": "赛事",
-    "clubs": "俱乐部",
     "gatherings": "聚会",
     "market": "市集",
     "battle": "对战",
@@ -383,16 +382,6 @@
     "f2Desc": "固定轮数，与积分相近的对手对战；成绩最好的选手晋级决赛淘汰树。",
     "f3Name": "3on3 / 卡组赛",
     "f3Desc": "携带 3 套互不重复零件的组合。获胜者的陀螺留场，拿下全部三回合即获胜。",
-    "findTitle": "去哪里参赛",
-    "findIntro": "报名与对阵表都在主办方平台进行——SPINDEX 无需任何账号。",
-    "challongeName": "WBO Challonge 对阵表",
-    "challongeDesc": "世界爆旋陀螺组织（WBO）官方对阵表——全球正在进行与历史赛事。",
-    "wboName": "WBO 赛事论坛",
-    "wboDesc": "寻找你附近的认证赛事，或在你的城市发起一场。",
-    "ttName": "Takara Tomy 亚洲赛事",
-    "ttDesc": "官方爆旋陀螺 X 亚洲赛事日程。",
-    "myName": "马来西亚 — Beyblade Malaysia",
-    "myDesc": "马来西亚官方 G1–G3 赛事公告。",
     "hostTitle": "社群赛事",
     "hostIntro": "建立简单赛事，选择赛制，让玩家加入名单。",
     "hostCta": "主办赛事",
@@ -435,8 +424,7 @@
     "notFound": "找不到赛事。",
     "leave": "退出",
     "cancel": "取消",
-    "joinTournament": "加入赛事",
-    "open": "前往"
+    "joinTournament": "加入赛事"
   },
   "gatherings": {
     "title": "聚会",
@@ -478,26 +466,6 @@
     "empty": "暂无聚会，发布一个吧。",
     "errorGeneric": "出错了，请重试。"
   },
-  "clubs": {
-    "title": "俱乐部与训练聚会",
-    "subtitle": "加入社群，到场开战。本站永远不需要注册。",
-    "howTitle": "如何加入",
-    "how1Title": "选择俱乐部",
-    "how1Text": "浏览名录——每张卡片都标明地区、俱乐部简介与聚会地点。",
-    "how2Title": "点击群组链接",
-    "how2Text": "加入在俱乐部自己的 WhatsApp / Telegram / Facebook 群组完成——无需 SPINDEX 账号，无需填表。",
-    "how3Title": "到场对战",
-    "how3Text": "在群里查看下一次训练或擂台时间，带上你的卡组。",
-    "dirTitle": "名录",
-    "addTitle": "你在经营俱乐部或训练聚会？",
-    "addText": "想被收录——提供名称、城市、时间表与群组链接。在 GitHub 提交请求，或通过任一已收录社群联系。",
-    "addCta": "申请收录",
-    "venue": "地点",
-    "schedule": "时间表",
-    "kindClub": "俱乐部",
-    "kindCommunity": "社群",
-    "kindOfficial": "官方"
-  },
   "market": {
     "title": "市集",
     "subtitle": "与其他玩家买卖零件、预购新品。",
@@ -536,16 +504,16 @@
   },
   "about": {
     "title": "关于 SPINDEX",
-    "p1": "SPINDEX 由来自马来西亚 🇲🇾 的爆旋陀螺 X 玩家兼收藏家 Andrew Yap 打造与维护。",
+    "p1": "SPINDEX 由 SPINDEX Malaysia 打造与维护——一支爆旋陀螺 X 玩家兼收藏家团队。",
     "p2": "目标：让世界各地的玩家——无论中文还是英文——都有一个干净利落的地方研究每个零件、构思组合、追踪竞技环境，并找到一起对战的伙伴。",
-    "sig": "竞技场见。—— Andrew"
+    "sig": "竞技场见。—— SPINDEX Malaysia"
   },
   "footer": {
     "disclaimer": "SPINDEX 为非官方粉丝项目。爆旋陀螺 X 及所有零件名称、产品图片版权归 Takara Tomy / 孩之宝所有，与本站无关联。",
     "credits": "零件数据与图片来自社群阶级表，作者",
     "and": "与",
     "dataNote": "赛事阶级反映台湾社群环境。",
-    "builtBy": "由 Andrew Yap 打造 · 马来西亚 🇲🇾"
+    "builtBy": "SPINDEX Malaysia"
   },
   "notFound": {
     "title": "冲出竞技场了",

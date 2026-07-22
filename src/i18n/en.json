@@ -10,7 +10,6 @@
     "builder": "Builder",
     "rankings": "Rankings",
     "tournaments": "Tournaments",
-    "clubs": "Clubs",
     "gatherings": "Gathering",
     "market": "Market",
     "battle": "Battle",
@@ -383,16 +382,6 @@
     "f2Desc": "Everyone plays a fixed number of rounds against similarly-scored opponents; top finishers advance to a final bracket.",
     "f3Name": "3on3 / Deck Format",
     "f3Desc": "Bring a deck of 3 combos with no repeated parts. The winner keeps their Bey on the stadium; take all three rounds to win.",
-    "findTitle": "Where to compete",
-    "findIntro": "Brackets and signups run on the organizers' platforms — no account needed on SPINDEX.",
-    "challongeName": "WBO on Challonge",
-    "challongeDesc": "Official World Beyblade Organization brackets — live and past tournaments worldwide.",
-    "wboName": "WBO Events Forum",
-    "wboDesc": "Find sanctioned events near you, or propose one in your city.",
-    "ttName": "Takara Tomy Asia Events",
-    "ttDesc": "Official Beyblade X tournament schedule across Asia.",
-    "myName": "Malaysia — Beyblade Malaysia",
-    "myDesc": "Official G1–G3 tournament announcements for Malaysia.",
     "hostTitle": "Community tournaments",
     "hostIntro": "Host a simple bracket, pick a format, and let players join the lineup.",
     "hostCta": "Host tournament",
@@ -435,8 +424,7 @@
     "notFound": "Tournament not found.",
     "leave": "Leave",
     "cancel": "Cancel",
-    "joinTournament": "Join tournament",
-    "open": "Open"
+    "joinTournament": "Join tournament"
   },
   "gatherings": {
     "title": "Gathering",
@@ -478,26 +466,6 @@
     "empty": "No gatherings yet. Post one.",
     "errorGeneric": "Something went wrong. Try again."
   },
-  "clubs": {
-    "title": "Clubs & Training Meets",
-    "subtitle": "Join a community, show up, battle. No sign-up on this site — ever.",
-    "howTitle": "How joining works",
-    "how1Title": "Pick a club",
-    "how1Text": "Browse the directory — each card shows the region, what the club is about, and where it meets.",
-    "how2Title": "Tap the group link",
-    "how2Text": "Joining happens in the club's own WhatsApp / Telegram / Facebook group — no SPINDEX account, no forms.",
-    "how3Title": "Show up & battle",
-    "how3Text": "Check the group for the next training meet or arena session, and bring your deck.",
-    "dirTitle": "Directory",
-    "addTitle": "Run a club or training meet?",
-    "addText": "Get listed here — name, city, schedule and your group-chat link. Open a request on GitHub or reach out through any listed community.",
-    "addCta": "Request a listing",
-    "venue": "Venue",
-    "schedule": "Schedule",
-    "kindClub": "Club",
-    "kindCommunity": "Community",
-    "kindOfficial": "Official"
-  },
   "market": {
     "title": "Marketplace",
     "subtitle": "Buy, sell and pre-order parts with other bladers.",
@@ -536,16 +504,16 @@
   },
   "about": {
     "title": "About SPINDEX",
-    "p1": "SPINDEX is built and maintained by Andrew Yap, a Beyblade X blader and collector from Malaysia 🇲🇾.",
+    "p1": "SPINDEX is built and maintained by SPINDEX Malaysia, a team of Beyblade X bladers and collectors.",
     "p2": "The goal: give bladers everywhere — in English and Chinese — one clean place to study every part, theory-craft combos, follow the competitive meta, and find people to battle.",
-    "sig": "See you in the stadium. — Andrew"
+    "sig": "See you in the stadium. — SPINDEX Malaysia"
   },
   "footer": {
     "disclaimer": "SPINDEX is an unofficial fan project. Beyblade X, all part names and product images are trademarks of Takara Tomy / Hasbro. No affiliation.",
     "credits": "Part data & images courtesy of the community tier list by",
     "and": "and",
     "dataNote": "Tournament tiers reflect the Taiwan community meta.",
-    "builtBy": "Built by Andrew Yap · Malaysia 🇲🇾"
+    "builtBy": "SPINDEX Malaysia"
   },
   "notFound": {
     "title": "LOST IN THE XTREME ZONE",

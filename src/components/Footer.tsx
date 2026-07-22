@@ -17,17 +17,7 @@ export default function Footer({ dict }: { dict: Dict }) {
           (@RENLIgames {dict.footer.and} @anguzyao_). {dict.footer.dataNote}
         </p>
         <p>{dict.footer.disclaimer}</p>
-        <p className="font-semibold text-ink-dim">
-          {dict.footer.builtBy} ·{" "}
-          <a
-            href="https://github.com/andrewy96/spindex"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-2 hover:underline"
-          >
-            GitHub
-          </a>
-        </p>
+        <p className="font-semibold text-ink-dim">{dict.footer.builtBy}</p>
       </div>
     </footer>
   );

@@ -42,13 +42,6 @@ export default async function TournamentsPage({
     { name: t.f3Name, desc: t.f3Desc, n: "03" },
   ];
 
-  const places = [
-    { name: t.challongeName, desc: t.challongeDesc, url: "https://worldbeyblade.challonge.com/" },
-    { name: t.wboName, desc: t.wboDesc, url: "https://worldbeyblade.org/" },
-    { name: t.ttName, desc: t.ttDesc, url: "https://takaratomyasia.com/en/beyblade-x-campiagn-page/" },
-    { name: t.myName, desc: t.myDesc, url: "https://www.facebook.com/Beyblademy/" },
-  ];
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="font-display text-3xl font-bold tracking-wide">{t.title}</h1>
@@ -91,31 +84,6 @@ export default async function TournamentsPage({
               <div className="mt-2 font-semibold">{f.name}</div>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-dim">{f.desc}</p>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Where to compete */}
-      <section className="mt-12">
-        <h2 className="font-display text-xl font-bold tracking-wide">{t.findTitle}</h2>
-        <p className="mt-1 text-sm text-ink-dim">{t.findIntro}</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {places.map((p) => (
-            <a
-              key={p.url}
-              href={p.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="panel group flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:border-accent/50"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold group-hover:text-accent">{p.name}</div>
-                <p className="mt-1 text-sm leading-relaxed text-ink-dim">{p.desc}</p>
-              </div>
-              <span className="clip-x shrink-0 border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-accent">
-                {t.open} ↗
-              </span>
-            </a>
           ))}
         </div>
       </section>

@@ -89,7 +89,6 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
     { href: `/${locale}/builder`, label: dict.nav.builder },
     { href: `/${locale}/rankings`, label: dict.nav.rankings },
     { href: `/${locale}/tournaments`, label: dict.nav.tournaments },
-    { href: `/${locale}/clubs`, label: dict.nav.clubs },
     { href: `/${locale}/gatherings`, label: dict.nav.gatherings },
     { href: `/${locale}/market`, label: dict.nav.market },
     { href: `/${locale}/battle`, label: dict.nav.battle },
@@ -101,9 +100,10 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
   return (
     <header className="sticky top-0 z-40 border-b border-edge bg-bg/85 backdrop-blur">
       <nav className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
-        <Link href={`/${locale}`} className="flex items-baseline gap-1 font-display text-lg font-bold tracking-widest">
-          <span>SPINDE</span>
-          <span className="text-glow text-accent">X</span>
+        <Link href={`/${locale}`} className="flex items-baseline text-lg font-semibold">
+          <span>s</span>
+          <span className="text-accent">p</span>
+          <span>index</span>
         </Link>
 
         <div className="ml-auto hidden items-center gap-1 sm:flex">
