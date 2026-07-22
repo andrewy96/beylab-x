@@ -27,6 +27,7 @@ function moneyLabel(g: Gathering, dict: Dict) {
 export default function GatheringsClient({ locale, dict }: { locale: Locale; dict: Dict }) {
   const { enabled, profile } = useAuth();
   const [city, setCity] = useState("all");
+  const [timeScope, setTimeScope] = useState<"upcoming" | "past">("upcoming");
   const [items, setItems] = useState<Gathering[]>([]);
   const [showPost, setShowPost] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -45,16 +46,17 @@ export default function GatheringsClient({ locale, dict }: { locale: Locale; dic
 
   const load = useCallback(async () => {
     if (!supabase) return;
-    let q = supabase
-      .from("gatherings")
-      .select(GATHERING_SELECT)
-      .eq("status", "open")
-      .order("gather_at", { ascending: true })
-      .limit(80);
+    const nowIso = new Date().toISOString();
+    let q = supabase.from("gatherings").select(GATHERING_SELECT).eq("status", "open");
+    q =
+      timeScope === "upcoming"
+        ? q.gte("gather_at", nowIso).order("gather_at", { ascending: true })
+        : q.lt("gather_at", nowIso).order("gather_at", { ascending: false });
+    q = q.limit(80);
     if (city !== "all") q = q.eq("city", city);
     const { data, error: err } = await q;
     if (!err) setItems((data as unknown as Gathering[]) ?? []);
-  }, [city]);
+  }, [city, timeScope]);
 
   useEffect(() => {
     load();
@@ -153,6 +155,14 @@ export default function GatheringsClient({ locale, dict }: { locale: Locale; dic
             </option>
           ))}
         </select>
+        <select
+          value={timeScope}
+          onChange={(e) => setTimeScope(e.target.value as "upcoming" | "past")}
+          className="rounded-md border border-edge bg-panel px-2.5 py-1.5 text-xs text-ink outline-none transition focus:border-accent"
+        >
+          <option value="upcoming">{dict.gatherings.timeUpcoming}</option>
+          <option value="past">{dict.gatherings.timePast}</option>
+        </select>
         <div className="ml-auto">
           {profile ? (
             <button
@@ -246,6 +256,7 @@ export default function GatheringsClient({ locale, dict }: { locale: Locale; dic
             const waitlisted = members.filter((m) => m.status === "waitlisted");
             const mine = profile ? members.find((m) => m.user_id === profile.id) : null;
             const isHost = profile?.id === g.host;
+            const isPast = new Date(g.gather_at) < new Date();
             return (
               <div key={g.id} className="panel flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -291,11 +302,16 @@ export default function GatheringsClient({ locale, dict }: { locale: Locale; dic
                     <button onClick={() => cancel(g)} disabled={busy || g.status !== "open"} className="clip-x border border-edge bg-panel-2 px-4 py-2 font-display text-xs font-bold tracking-wider text-ink-dim transition hover:text-ink disabled:opacity-50">
                       {dict.gatherings.cancel}
                     </button>
-                  ) : g.status === "open" ? (
+                  ) : g.status === "open" && !isPast ? (
                     <button onClick={() => join(g)} disabled={busy} className="clip-x bg-accent px-4 py-2 font-display text-xs font-bold tracking-wider text-bg transition hover:brightness-110 disabled:opacity-50">
                       {dict.gatherings.join}
                     </button>
                   ) : null}
+                  {isPast && !mine && !isHost && (
+                    <span className="rounded bg-panel px-2 py-1 text-[10px] font-semibold text-ink-dim">
+                      {dict.gatherings.ended}
+                    </span>
+                  )}
                 </div>
               </div>
             );

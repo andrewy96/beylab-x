@@ -434,6 +434,9 @@
     "titleField": "聚会名称",
     "cityFilter": "州属",
     "all": "全部",
+    "timeUpcoming": "即将举行",
+    "timePast": "已结束",
+    "ended": "已结束",
     "venue": "地点",
     "when": "时间",
     "capacity": "人数上限",
@@ -510,9 +513,6 @@
   },
   "footer": {
     "disclaimer": "SPINDEX 为非官方粉丝项目。爆旋陀螺 X 及所有零件名称、产品图片版权归 Takara Tomy / 孩之宝所有，与本站无关联。",
-    "credits": "零件数据与图片来自社群阶级表，作者",
-    "and": "与",
-    "dataNote": "赛事阶级反映台湾社群环境。",
     "builtBy": "SPINDEX Malaysia"
   },
   "notFound": {

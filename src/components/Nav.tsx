@@ -100,7 +100,7 @@ export default function Nav({ locale, dict }: { locale: Locale; dict: Dict }) {
   return (
     <header className="sticky top-0 z-40 border-b border-edge bg-bg/85 backdrop-blur">
       <nav className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
-        <Link href={`/${locale}`} className="flex items-baseline text-lg font-semibold">
+        <Link href={`/${locale}`} className="flex items-baseline text-2xl font-bold">
           <span>s</span>
           <span className="text-accent">p</span>
           <span>index</span>

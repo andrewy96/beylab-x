@@ -434,6 +434,9 @@
     "titleField": "Gathering name",
     "cityFilter": "State",
     "all": "All",
+    "timeUpcoming": "Upcoming",
+    "timePast": "Past",
+    "ended": "Ended",
     "venue": "Location",
     "when": "Time",
     "capacity": "Capacity",
@@ -510,9 +513,6 @@
   },
   "footer": {
     "disclaimer": "SPINDEX is an unofficial fan project. Beyblade X, all part names and product images are trademarks of Takara Tomy / Hasbro. No affiliation.",
-    "credits": "Part data & images courtesy of the community tier list by",
-    "and": "and",
-    "dataNote": "Tournament tiers reflect the Taiwan community meta.",
     "builtBy": "SPINDEX Malaysia"
   },
   "notFound": {
