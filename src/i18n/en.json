@@ -1,6 +1,6 @@
 {
   "site": {
-    "name": "BEYLAB X",
+    "name": "SPINDEX",
     "tagline": "The Beyblade X catalog & combo lab",
     "description": "Browse every Beyblade X blade, lock chip, ratchet and bit — then mix, match and share your ultimate combo."
   },
@@ -384,7 +384,7 @@
     "f3Name": "3on3 / Deck Format",
     "f3Desc": "Bring a deck of 3 combos with no repeated parts. The winner keeps their Bey on the stadium; take all three rounds to win.",
     "findTitle": "Where to compete",
-    "findIntro": "Brackets and signups run on the organizers' platforms — no account needed on BEYLAB X.",
+    "findIntro": "Brackets and signups run on the organizers' platforms — no account needed on SPINDEX.",
     "challongeName": "WBO on Challonge",
     "challongeDesc": "Official World Beyblade Organization brackets — live and past tournaments worldwide.",
     "wboName": "WBO Events Forum",
@@ -485,7 +485,7 @@
     "how1Title": "Pick a club",
     "how1Text": "Browse the directory — each card shows the region, what the club is about, and where it meets.",
     "how2Title": "Tap the group link",
-    "how2Text": "Joining happens in the club's own WhatsApp / Telegram / Facebook group — no BEYLAB X account, no forms.",
+    "how2Text": "Joining happens in the club's own WhatsApp / Telegram / Facebook group — no SPINDEX account, no forms.",
     "how3Title": "Show up & battle",
     "how3Text": "Check the group for the next training meet or arena session, and bring your deck.",
     "dirTitle": "Directory",
@@ -503,7 +503,7 @@
     "subtitle": "Buy, sell and pre-order parts with other bladers.",
     "comingSoon": "COMING SOON",
     "noticeTitle": "Marketplace preview — transactions are not enabled yet",
-    "noticeText": "Buying, selling and pre-ordering on BEYLAB X are still under development, so every checkout button below is disabled. Until launch, purchase through the reference store or your local club.",
+    "noticeText": "Buying, selling and pre-ordering on SPINDEX are still under development, so every checkout button below is disabled. Until launch, purchase through the reference store or your local club.",
     "priceNote": "Reference retail prices (RM) courtesy of",
     "visitSource": "Visit store",
     "searchPlaceholder": "Search products…",
@@ -535,13 +535,13 @@
     "seller": "Seller"
   },
   "about": {
-    "title": "About BEYLAB X",
-    "p1": "BEYLAB X is built and maintained by Andrew Yap, a Beyblade X blader and collector from Malaysia 🇲🇾.",
+    "title": "About SPINDEX",
+    "p1": "SPINDEX is built and maintained by Andrew Yap, a Beyblade X blader and collector from Malaysia 🇲🇾.",
     "p2": "The goal: give bladers everywhere — in English and Chinese — one clean place to study every part, theory-craft combos, follow the competitive meta, and find people to battle.",
     "sig": "See you in the stadium. — Andrew"
   },
   "footer": {
-    "disclaimer": "BEYLAB X is an unofficial fan project. Beyblade X, all part names and product images are trademarks of Takara Tomy / Hasbro. No affiliation.",
+    "disclaimer": "SPINDEX is an unofficial fan project. Beyblade X, all part names and product images are trademarks of Takara Tomy / Hasbro. No affiliation.",
     "credits": "Part data & images courtesy of the community tier list by",
     "and": "and",
     "dataNote": "Tournament tiers reflect the Taiwan community meta.",

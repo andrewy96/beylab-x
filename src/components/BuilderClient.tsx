@@ -58,7 +58,7 @@ interface StrategySessionCache {
   cached?: boolean;
 }
 
-const strategySessionKey = (hash: string) => `beylab.strategy.${hash}`;
+const strategySessionKey = (hash: string) => `spindex.strategy.${hash}`;
 
 async function sha256Hex(value: string): Promise<string | null> {
   if (!window.crypto?.subtle) return null;

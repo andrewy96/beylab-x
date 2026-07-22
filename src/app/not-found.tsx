@@ -12,7 +12,7 @@ export default function NotFound() {
         href="/en"
         className="clip-x mt-2 bg-accent px-6 py-3 font-display text-sm font-bold tracking-wider text-bg"
       >
-        BEYLAB X →
+        SPINDEX →
       </Link>
     </div>
   );

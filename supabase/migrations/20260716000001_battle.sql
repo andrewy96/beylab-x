@@ -1,4 +1,4 @@
--- BEYLAB X battle system: profiles, challenges, matches, star wagers.
+-- SPINDEX battle system: profiles, challenges, matches, star wagers.
 -- Stars/wins/losses only ever change inside security-definer functions.
 
 -- ============ profiles ============

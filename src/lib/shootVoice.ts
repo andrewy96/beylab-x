@@ -12,7 +12,7 @@ export type VoicePack = {
   play: (step: CountdownStep) => void;
 };
 
-const STORAGE_KEY = "beylab-shoot-voice";
+const STORAGE_KEY = "spindex-shoot-voice";
 
 /* ---------- Web Audio beeps (electronic pack + accent under voices) ---------- */
 

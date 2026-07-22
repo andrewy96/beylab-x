@@ -11,7 +11,7 @@ const notoSC = Noto_Sans_SC({
 });
 
 export const metadata: Metadata = {
-  title: "BEYLAB X",
+  title: "SPINDEX",
   description:
     "The Beyblade X catalog & combo lab - browse every blade, lock chip, assist blade, ratchet and bit, build combos and share them.",
 };

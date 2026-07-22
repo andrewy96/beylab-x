@@ -100,7 +100,7 @@ export function shareSampleText(d: ShareCardData): string {
     d.firstToLabel,
     Object.values(d.labels.finish).join(""),
     d.labels.url,
-    "0123456789:★+…BEYLABX",
+    "0123456789:★+…SPINDEX",
   ].join(" ");
 }
 
@@ -433,11 +433,11 @@ export function renderShareCard(
 
   ctx.font = `900 64px ${display}`;
   const track = 64 * 0.24;
-  const wordW = measureTracked(ctx, "BEYLAB X", track);
+  const wordW = measureTracked(ctx, "SPINDEX", track);
   const startX = CARD_W / 2 - wordW / 2;
   ctx.fillStyle = THEME.ink;
-  drawTrackedFrom(ctx, "BEYLAB ", startX, 1278, track);
-  const beylabW = measureTracked(ctx, "BEYLAB ", track) + track;
+  drawTrackedFrom(ctx, "SPINDE", startX, 1278, track);
+  const beylabW = measureTracked(ctx, "SPINDE", track) + track;
   ctx.fillStyle = THEME.accent;
   ctx.shadowColor = THEME.accent;
   ctx.shadowBlur = 34;
@@ -556,7 +556,7 @@ export function canvasToPngFile(canvas: HTMLCanvasElement, fileId: string): Prom
         return;
       }
       resolve(
-        new File([blob], `beylab-x-battle-${fileId.slice(0, 8)}.png`, { type: "image/png" }),
+        new File([blob], `spindex-battle-${fileId.slice(0, 8)}.png`, { type: "image/png" }),
       );
     }, "image/png");
   });
@@ -588,7 +588,7 @@ export function outcomeHeader(outcome: ShareOutcome, dict: Dict): string {
 }
 
 export function shareSiteLabel(): string {
-  return typeof window !== "undefined" ? window.location.host : "BEYLAB X";
+  return typeof window !== "undefined" ? window.location.host : "SPINDEX";
 }
 
 export function matchToShareData(

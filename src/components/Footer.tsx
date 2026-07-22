@@ -20,7 +20,7 @@ export default function Footer({ dict }: { dict: Dict }) {
         <p className="font-semibold text-ink-dim">
           {dict.footer.builtBy} ·{" "}
           <a
-            href="https://github.com/andrewy96/beylab-x"
+            href="https://github.com/andrewy96/spindex"
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent-2 hover:underline"

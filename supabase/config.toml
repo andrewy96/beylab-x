@@ -1,5 +1,5 @@
 # Remote auth config for the linked Supabase project (applied via `supabase config push`).
-project_id = "beylab-x"
+project_id = "spindex"
 
 [auth]
 enable_signup = true

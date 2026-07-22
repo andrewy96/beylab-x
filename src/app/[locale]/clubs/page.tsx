@@ -159,7 +159,7 @@ export default async function ClubsPage({
             <p className="mt-1 text-sm leading-relaxed text-ink-dim">{c.addText}</p>
           </div>
           <a
-            href="https://github.com/andrewy96/beylab-x/issues/new?title=Club%20listing%20request"
+            href="https://github.com/andrewy96/spindex/issues/new?title=Club%20listing%20request"
             target="_blank"
             rel="noopener noreferrer"
             className="clip-x shrink-0 bg-accent px-6 py-3 font-display text-sm font-bold tracking-wider text-bg transition hover:brightness-110"

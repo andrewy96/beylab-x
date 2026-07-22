@@ -97,7 +97,7 @@ export default function ShareMatchModal({
     try {
       await navigator.share({
         files: [file],
-        title: "BEYLAB X",
+        title: "SPINDEX",
         text: `${card.labels.header} · ${card.p1Name} ${card.p1Score}:${card.p2Score} ${card.p2Name}`,
       });
     } catch (err) {

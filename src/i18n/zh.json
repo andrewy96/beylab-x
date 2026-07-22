@@ -1,6 +1,6 @@
 {
   "site": {
-    "name": "BEYLAB X",
+    "name": "SPINDEX",
     "tagline": "爆旋陀螺 X 图鉴与组装实验室",
     "description": "浏览所有爆旋陀螺 X 战刃、锁芯、固锁与轴心——自由组装并一键分享你的最强配置。"
   },
@@ -384,7 +384,7 @@
     "f3Name": "3on3 / 卡组赛",
     "f3Desc": "携带 3 套互不重复零件的组合。获胜者的陀螺留场，拿下全部三回合即获胜。",
     "findTitle": "去哪里参赛",
-    "findIntro": "报名与对阵表都在主办方平台进行——BEYLAB X 无需任何账号。",
+    "findIntro": "报名与对阵表都在主办方平台进行——SPINDEX 无需任何账号。",
     "challongeName": "WBO Challonge 对阵表",
     "challongeDesc": "世界爆旋陀螺组织（WBO）官方对阵表——全球正在进行与历史赛事。",
     "wboName": "WBO 赛事论坛",
@@ -485,7 +485,7 @@
     "how1Title": "选择俱乐部",
     "how1Text": "浏览名录——每张卡片都标明地区、俱乐部简介与聚会地点。",
     "how2Title": "点击群组链接",
-    "how2Text": "加入在俱乐部自己的 WhatsApp / Telegram / Facebook 群组完成——无需 BEYLAB X 账号，无需填表。",
+    "how2Text": "加入在俱乐部自己的 WhatsApp / Telegram / Facebook 群组完成——无需 SPINDEX 账号，无需填表。",
     "how3Title": "到场对战",
     "how3Text": "在群里查看下一次训练或擂台时间，带上你的卡组。",
     "dirTitle": "名录",
@@ -503,7 +503,7 @@
     "subtitle": "与其他玩家买卖零件、预购新品。",
     "comingSoon": "即将推出",
     "noticeTitle": "市集预览——交易功能尚未开放",
-    "noticeText": "BEYLAB X 的买卖与预购功能仍在开发中，以下所有结账按钮均已停用。正式上线前，请通过参考商店或本地俱乐部购买。",
+    "noticeText": "SPINDEX 的买卖与预购功能仍在开发中，以下所有结账按钮均已停用。正式上线前，请通过参考商店或本地俱乐部购买。",
     "priceNote": "参考零售价（RM）来自",
     "visitSource": "前往商店",
     "searchPlaceholder": "搜索商品…",
@@ -535,13 +535,13 @@
     "seller": "卖家"
   },
   "about": {
-    "title": "关于 BEYLAB X",
-    "p1": "BEYLAB X 由来自马来西亚 🇲🇾 的爆旋陀螺 X 玩家兼收藏家 Andrew Yap 打造与维护。",
+    "title": "关于 SPINDEX",
+    "p1": "SPINDEX 由来自马来西亚 🇲🇾 的爆旋陀螺 X 玩家兼收藏家 Andrew Yap 打造与维护。",
     "p2": "目标：让世界各地的玩家——无论中文还是英文——都有一个干净利落的地方研究每个零件、构思组合、追踪竞技环境，并找到一起对战的伙伴。",
     "sig": "竞技场见。—— Andrew"
   },
   "footer": {
-    "disclaimer": "BEYLAB X 为非官方粉丝项目。爆旋陀螺 X 及所有零件名称、产品图片版权归 Takara Tomy / 孩之宝所有，与本站无关联。",
+    "disclaimer": "SPINDEX 为非官方粉丝项目。爆旋陀螺 X 及所有零件名称、产品图片版权归 Takara Tomy / 孩之宝所有，与本站无关联。",
     "credits": "零件数据与图片来自社群阶级表，作者",
     "and": "与",
     "dataNote": "赛事阶级反映台湾社群环境。",
